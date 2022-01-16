@@ -76,6 +76,8 @@ ggplot(data = Cancer20_21_Breast_31_R0A, aes(x = PERIOD, y = PERFORMANCE)) +
 ###################################### Comments ###################################### 
 ## We can try and extend this by binding the Provider datasets 
 ## Group them by the ORG codes -> A Map would be really cool 
+## We can have a map that visualises the drop in cwt performance rates in different regions 
+## another map that visualises how hard it was hit by covid 19
 ## Try different cancer types
 
 
