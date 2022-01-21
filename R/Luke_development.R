@@ -2,6 +2,7 @@
 
 library("readxl")
 library("tidyverse")
+library("read_csv")
 
 
 ########### Load Data #############
@@ -68,27 +69,34 @@ provider_data <- provider_data %>% arrange(period, standard)
 # mm-dd-yyyy EG 11-01-2020
 
 #Load data
-data <- read_csv("data/data_complete.csv")
+data <- read_csv("data/provider_level_data.csv")
+
+data <- read_csv("https://lshtm-my.sharepoint.com/:x:/g/personal/lsh2102097_student_lshtm_ac_uk/ESJZ6EtA20JBtroPRVobJl8BaENseHyqdQoN_awQryueNQ?e=blHOwT")
 
 ############### Merging provider data ##################
 key <- read_csv("data/Commissioners_key.csv")
 
 colnames(key) <- c("org_code","org_name","region_code","region_name","area","area_name")
 
-data2 <- merge(data, key, by='org_code')
+data2 <- merge(data, key, by='org_code', all.x = TRUE)
 
-data2 <- data2 %>% arrange(period, standard, org_code) 
 
-data2 <- data2[,c(2,1,12:14,5,7:11,15)]
 
-data2 <- data2[,1:11]
+data2 <- data2[,c(2,1,12:14,5,7:11)]
 
-colnames(data2) <- c("period","provider_code","provider_name","region_code","region_name","standards"
+
+
+colnames(data2) <- c("period","provider_code","provider_name","region_code","region_name","standard"
                      ,"care_settings","cancer_type","total_treated","within_standard","breaches")
+
+data2 <- data2 %>% arrange(period,  standard, provider_code) 
 
 data2$performance <- data2$within_standard / data2$total_treated
 
-write_csv(data2,"data/provider_level_data.csv",na="")
+##data2 <- data2[,c(1:6,8:12)]
+
+write_csv(data2,"data/provider_level_data_y.csv",na="")
+
 
 ############### Basic Data Analysis ####################
 
@@ -96,9 +104,9 @@ write_csv(data2,"data/provider_level_data.csv",na="")
 nrow(provider_data) #812,119
 
 #cancer types
-n_distinct(data2$standard)  #30
+n_distinct(data3$provider_code)  #30
 
-unique(data2[c("standards")])
+unique(data3[c("provider_code")])
 
 #number of organisations
   n_distinct(provider_data$org_code)     #245
@@ -111,8 +119,10 @@ unique(data2[c("standards")])
   
   sum(provider_data$breaches)/sum(provider_data$total_treated)
 
+  data2 <- data %>% filter(period >= as.Date("2016-01-01"))
+  
   #percentage of breaches before 
-  data %>% filter(period >= as.Date("2020-03-01") & standard == "2WW") %>% summarise(sum(breaches))/data %>% filter(period >= as.Date("2020-03-01") & standard == "2WW") %>% summarise(sum(total_treated))
+  data %>% filter(period >= as.Date("2016-01-01") & standard == "2WW") %>% summarise(sum(breaches))/data %>% filter(period >= as.Date("2020-03-01") & standard == "2WW") %>% summarise(sum(total_treated))
     #0.1335218
   data %>% filter(period < as.Date("2020-03-01") & standard == "2WW") %>% summarise(sum(breaches))/data %>% filter(period < as.Date("2020-03-01") & standard == "2WW") %>% summarise(sum(total_treated))
     #0.07038327
