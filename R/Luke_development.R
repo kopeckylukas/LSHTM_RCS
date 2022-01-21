@@ -70,13 +70,35 @@ provider_data <- provider_data %>% arrange(period, standard)
 #Load data
 data <- read_csv("data/data_complete.csv")
 
+############### Merging provider data ##################
+key <- read_csv("data/Commissioners_key.csv")
+
+colnames(key) <- c("org_code","org_name","region_code","region_name","area","area_name")
+
+data2 <- merge(data, key, by='org_code')
+
+data2 <- data2 %>% arrange(period, standard, org_code) 
+
+data2 <- data2[,c(2,1,12:14,5,7:11,15)]
+
+data2 <- data2[,1:11]
+
+colnames(data2) <- c("period","provider_code","provider_name","region_code","region_name","standards"
+                     ,"care_settings","cancer_type","total_treated","within_standard","breaches")
+
+data2$performance <- data2$within_standard / data2$total_treated
+
+write_csv(data2,"data/provider_level_data.csv",na="")
+
 ############### Basic Data Analysis ####################
 
 #number records
 nrow(provider_data) #812,119
 
 #cancer types
-n_distinct(provider_data$cancer_type)  #30
+n_distinct(data2$standard)  #30
+
+unique(data2[c("standards")])
 
 #number of organisations
   n_distinct(provider_data$org_code)     #245
@@ -118,12 +140,32 @@ n_distinct(provider_data$cancer_type)  #30
     #397724
   
   
+  #Provider Level
+  plt.dt <- data %>% filter(standard == "2WW" & cancer_type == "Suspected lung cancer") %>% group_by(period, org_code) %>% summarise(sum(total_treated))
   
+  
+  ggplot(plt.dt, aes(period, `sum(total_treated)`,colour = org_code)) + 
+    geom_point() + ggtitle("Number of Referrals for Suspected Lung Cacner") +
+    xlab("Data in months") + ylab("Number of patient referred to specialist (providers)")+ theme(legend.position = "none")
+  
+  
+  #National Levelx
   plt.dt <- data %>% filter(standard == "2WW" & cancer_type == "Suspected lung cancer") %>% group_by(period) %>% summarise(sum(total_treated))
   
-  plot(plt.dt, )
-  ggplot(plt.dt, aes(plt.dt$period, plt.dt$`sum(total_treated)`)) + 
-    geom_point() + ggtitle("Number of patients with suspected lung cancer referred to specialist") +
-    xlab("Years, each dot represents one month") + ylab("Total number of patient referred to specialist")
-   
+  
+  ggplot(plt.dt, aes(period, `sum(total_treated)`)) + 
+    geom_point() + ggtitle("Number of Referrals for Suspected Lung Cacner") +
+    xlab("Data in months") + ylab("Number of patient referred to specialist (nationally)")
+  
+  #commisioner level
+  plt.dt <- data2 %>% filter(standard == "2WW" & cancer_type == "Suspected lung cancer") %>% group_by(period, commisioner_name) %>% summarise(sum(total_treated))
+  
+  
+  ggplot(plt.dt, aes(period, `sum(total_treated)`, colour = commisioner_name)) + 
+    geom_point() + ggtitle("Number of Referrals for Suspected Lung Cacner") +
+    xlab("Data in months") + ylab("Number of patient referred to specialist (nationally)")
+  
+  
+  
+  data %>% summarise(max(period))
   
