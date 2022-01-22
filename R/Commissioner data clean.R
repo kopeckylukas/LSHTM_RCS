@@ -1,11 +1,12 @@
 library("tidyverse")
 library("readxl")
 
-path <- "data/com_data/2021/OCTOBER-2021-CANCER-WAITING-TIMES-COMMISSIONER-WORKBOOK-PROVISIONAL.xlsx"
-period <- as.Date('2021-10-01') #yyy-mm-dd
-newName <- "data/com_done/october-21.csv"
-
 {
+path <- "data/com_data/2021/NOVEMBER-2021-CANCER-WAITING-TIMES-COMMISSIONER-WORKBOOK-PROVISIONAL.xlsx"
+period <- as.Date('2021-11-01') #yyy-mm-dd
+newName <- "data/com_done/november-21.csv"
+
+
 sheet_no <- length(excel_sheets(path))
 
 sheet2 <-read_excel(path, sheet=2,col_names = FALSE)
@@ -14,9 +15,9 @@ sheet2$standard <- unlist(sheet2[1,1])
 sheet2$period <- period
 colnames(sheet2) <- c("nah","ccg_code","ccg_name","cancer_type","total_treated","within_standard","braches","performance","standard","period")
 sheet2 <- sheet2[(cg2+1):nrow(sheet2),2:ncol(sheet2)]
-
+  
 newSheet <- sheet2
-}
+
 
 for(i in 3:sheet_no){
   
@@ -38,4 +39,7 @@ for(i in 3:sheet_no){
 
 }
 
+  write_csv(newSheet,newName,na="")
+
+}
 
