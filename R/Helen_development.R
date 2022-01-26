@@ -278,7 +278,91 @@ dygraph(year_19_20, main = "Perfomance Comparison between 2019 and 2020") %>%
 #a recover starting in June (quarantine lifted in June in England)
 
 
+###################################################################################################
+#more summary statistics comparing 2019 and 2020
+###################################################################################################
 
+#start at March since the most critical point in time starts from March 2020
+summary_set <- select(perform_months, 
+                      period, provider_code, total_treated, performance)
+
+Mar_19_20 <- filter(summary_set, 
+                    period == as.Date("2019-03-01") || period == as.Date("2020-03-01") )
+#all observations from March 2019 and March 2020 
+
+data_19_03 <- Mar_19_20 %>% 
+  filter(period == as.Date("2019-03-01"))
+  
+  summarise_at(data_19_03, 
+               .vars = vars(total_treated, performance), 
+               .funs = list(mean = mean, 
+                            sd = sd))
+#sd of total treated is way too big
+#probably good to not look at it or exclude some outliers 
+
+data_20_03 <- Mar_19_20 %>% 
+  filter(period == as.Date("2020-03-01"))
+ 
+   summarise_at(data_20_03, 
+                .vars = vars(total_treated, performance), 
+               .funs = list(mean = mean, 
+                            sd = sd))
+#same issue with total_treated-sd 
+
+#t test 
+t.test(data_20_03$performance, data_19_03$performance, var.equal = FALSE)
+#t=0.45859, p-value = 0.6465 
+#not enough evidence to show there is a difference between the performances in Mar2019 and Mar2020
+  
+  
+
+#repeat for Apr2019 and Apr2020
+#all observations from April 2019 and April 2020 
+
+Apr_19_20 <- filter(summary_set, 
+                    period == as.Date("2019-04-01") || period == as.Date("2020-04-01") )
+
+data_19_04 <- Apr_19_20 %>% 
+  filter(period == as.Date("2019-04-01"))
+
+summarise_at(data_19_04, 
+             .vars = vars(total_treated, performance), 
+             .funs = list(mean = mean, 
+                          sd = sd))
+#sd of total treated is way too big
+#probably good to not look at it or exclude some outliers 
+
+data_20_04 <- Apr_19_20 %>% 
+  filter(period == as.Date("2020-04-01"))
+
+summarise_at(data_20_04, 
+             .vars = vars(total_treated, performance), 
+             .funs = list(mean = mean, 
+                          sd = sd))
+
+#repeat for May2019 and May2020
+#all observations from May 2019 and May 2020 
+
+May_19_20 <- filter(summary_set, 
+                    period == as.Date("2019-05-01") || period == as.Date("2020-05-01") )
+
+data_19_05 <- May_19_20 %>% 
+  filter(period == as.Date("2019-05-01"))
+
+summarise_at(data_19_05, 
+             .vars = vars(total_treated, performance), 
+             .funs = list(mean = mean, 
+                          sd = sd))
+#sd of total treated is way too big
+#probably good to not look at it or exclude some outliers 
+
+data_20_05 <- May_19_20 %>% 
+  filter(period == as.Date("2020-05-01"))
+
+summarise_at(data_20_05, 
+             .vars = vars(total_treated, performance), 
+             .funs = list(mean = mean, 
+                          sd = sd))
 
 
 
