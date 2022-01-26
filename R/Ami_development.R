@@ -93,6 +93,7 @@ ggplot(data = provider_level_data, aes(x = total_treated)) +
 
 
 # Visualise Performance by region 
+## taking average of performance
 provider_plot_data1 <- provider_level_data %>% 
   select(period, region_name, performance) %>% 
   group_by(period, region_name) %>%
@@ -100,9 +101,23 @@ provider_plot_data1 <- provider_level_data %>%
 
 ggplot(data = provider_plot_data1, aes(x = period, y = performance, group = region_name, color = region_name)) +
   geom_line() + ggtitle("Performance for Cancer Waiting Times") + 
-  xlab("Years (in months)") + ylab("Performance rate") + 
-  scale_color_discrete(name = "Commissioning Region")
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Commissioning Region")+
+  theme_minimal()
 
+
+# Visualise Performance by region 
+# adding total treated and within standard and taking the average
+provider_plot_data1 <- provider_level_data %>% 
+  select(period, region_name, total_treated, within_standard) %>% 
+  group_by(period, region_name) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop')
+
+ggplot(data = provider_plot_data1, aes(x = period, y = performance, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Performance for Cancer Waiting Times") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Commissioning Region")+
+  theme_minimal()
 
 
 # Visualise total treated cancer numbers by region 
@@ -130,19 +145,65 @@ ggplot(data = provider_plot_data3, aes(x = period, y = breaches, group = region_
 
 
 # Add number of covid patients in hospitals to the total_treated plot
-ggplot(data = provider_plot_data2, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
-  geom_line() + ggtitle("Number of Treated Cancers") + 
-  xlab("Years (in months)") + ylab("Number of Treated Cancer Cases") +
-  geom_line(data = CovidPatients_in_hospital, aes(x = period, y = hospital_cases))
+ylim.prim <- c(0, 250000)
+ylim.sec <- c(0, 40000)
+
+b <- diff(ylim.prim)/diff(ylim.sec)
+a <- ylim.prim[1] - b*ylim.sec[1]
 
 
 ggplot() +
-  geom_line(data = provider_plot_data2, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
-  ggtitle("Number of Treated Cancers") + 
-  xlab("Years (in months)") + ylab("Number of Treated Cancer Cases")+
-  geom_line(data = CovidPatients_in_hospital, aes(x = period, y = hospital_cases))+ 
-  scale_color_discrete(name = "Commissioning Region") + 
-  scale_color_manual(values = c("black"))
+  geom_line(data = provider_plot_data2, 
+            aes(x = period, y = total_treated, group = region_name, 
+                color = region_name)) +
+  ggtitle("Number of Treated Cancers and Number of Covid Patients in Hospital") + 
+  xlab("Years") + ylab("Number of Treated Cancer Cases")+
+  geom_line(data = CovidPatients_in_hospital, 
+            aes(x = period, y = a + hospital_cases*b))+ 
+  scale_color_discrete(name = "Commissioning Region")+
+  scale_y_continuous("Number of Treated Cancer Cases", 
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Number of Covid Patients in Hospital"))+
+  theme_minimal()
+
+
+
+
+# add covid to performance plot 
+ylim.prim <- c(0.7, 1)
+ylim.sec <- c(0, 40000)
+
+b <- diff(ylim.prim)/diff(ylim.sec)
+a <- ylim.prim[1] - b*ylim.sec[1]
+
+ggplot() +
+  geom_line(data = provider_plot_data1, 
+            aes(x = period, y = performance, group = region_name, 
+                color = region_name)) +
+  ggtitle("Number of Treated Cancers and Number of Covid Patients in Hospital") + 
+  xlab("Years") + ylab("Number of Treated Cancer Cases")+
+  geom_line(data = CovidPatients_in_hospital, 
+            aes(x = period, y = a + hospital_cases*b))+ 
+  scale_color_discrete(name = "Commissioning Region")+
+  scale_y_continuous("Number of Treated Cancer Cases", 
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Number of Covid Patients in Hospital"))+
+  theme_minimal()
+
+
+
+
+## Performance by cancer type - useless
+
+provider_plot_data4 <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard) %>% 
+  group_by(period, cancer_type) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop')
+
+ggplot(data = provider_plot_data4, aes(x = period, y = performance, group = cancer_type, color = cancer_type)) +
+  geom_line() + ggtitle("Performance for Cancer Waiting Times") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Commissioning Region")+
+  theme_minimal()
+
 
 
 
