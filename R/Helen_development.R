@@ -116,17 +116,19 @@ summarise_at(Jun,
 #should be the one and only dataset needed for all analysis 
 install.packages("dygraphs")
 install.packages("zoo")
+#install.packages("ggpubr")
 
+#setup 
+library(tidyverse)
 library(readr)
 library(xlsx)
 library(dygraphs)
 library(xts)
+#library(ggpubr)
 
 urlfile = "https://raw.githubusercontent.com/kopeckylukas/LSHTM_RCS/main/Data/provider_level_data.csv"
 complete_data <- read_csv(urlfile)
 
-#setup 
-library(tidyverse)
 
 #looking at the average for all providers, grouped by months 
 #summary statistics for performance and total_treated 
@@ -277,7 +279,6 @@ dygraph(year_19_20, main = "Perfomance Comparison between 2019 and 2020") %>%
 #judging by the plot, May is when the performance rate dropped by the most 
 #a recover starting in June (quarantine lifted in June in England)
 
-
 ###################################################################################################
 #more summary statistics comparing 2019 and 2020
 ###################################################################################################
@@ -329,8 +330,6 @@ summarise_at(data_19_04,
              .vars = vars(total_treated, performance), 
              .funs = list(mean = mean, 
                           sd = sd))
-#sd of total treated is way too big
-#probably good to not look at it or exclude some outliers 
 
 data_20_04 <- Apr_19_20 %>% 
   filter(period == as.Date("2020-04-01"))
@@ -339,6 +338,10 @@ summarise_at(data_20_04,
              .vars = vars(total_treated, performance), 
              .funs = list(mean = mean, 
                           sd = sd))
+
+#t test 
+t.test(data_20_04$performance, data_19_04$performance, var.equal = FALSE)
+#t = -4.9969, p-value = 5.897e-07
 
 #repeat for May2019 and May2020
 #all observations from May 2019 and May 2020 
@@ -353,8 +356,6 @@ summarise_at(data_19_05,
              .vars = vars(total_treated, performance), 
              .funs = list(mean = mean, 
                           sd = sd))
-#sd of total treated is way too big
-#probably good to not look at it or exclude some outliers 
 
 data_20_05 <- May_19_20 %>% 
   filter(period == as.Date("2020-05-01"))
@@ -364,9 +365,9 @@ summarise_at(data_20_05,
              .funs = list(mean = mean, 
                           sd = sd))
 
-
-
-
+#t test 
+t.test(data_20_05$performance, data_19_05$performance, var.equal = FALSE)
+#t = -9.0813, p-value < 2.2e-16
 
 
 
