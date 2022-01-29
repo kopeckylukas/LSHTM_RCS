@@ -15,3 +15,16 @@ beds <- rbind(beds, b3)
 beds$South_of_England <- beds$`South East` + beds$`South West`
 beds$North_of_England <- beds$`North East and Yorkshire` + beds$`North West`
 beds$Midlands_and_East_of_England <- beds$Midlands + beds$`East of England`
+
+colnames(beds)
+
+beds <- beds[,c(1,2,4,10:12)]
+
+colnames(beds)
+
+colnames(beds)[1] <- "Date"
+colnames(beds)[2] <- "England"
+
+colSums(is.na(beds))
+
+write_csv(beds,"Data/Beds_regions.csv",na="")
