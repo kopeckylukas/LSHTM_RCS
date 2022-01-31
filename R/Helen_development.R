@@ -1,5 +1,346 @@
 ## HELEN!!! 
 
+########################################################################################################################################################
+#updates from Jan 31st
+########################################################################################################################################################
+
+########################################################################################################################################################
+#MAIN ANALYSIS 
+#Quantify changes in 2020 and 2021 using 2019 data as a baseline 
+########################################################################################################################################################
+
+#setup
+library(tidyverse)
+library(ggplot2)
+
+urlfile = "https://raw.githubusercontent.com/kopeckylukas/LSHTM_RCS/main/Data/provider_level_data.csv"
+provider_data <- read_csv(urlfile)
+
+#remove overlaps in standards 
+unique(provider_data$standard)
+#in order to avoid overlaps, I selected only the rows under these three standard: "2WW", "31 Days", "62 Days"
+selected_data <- filter(provider_data, 
+                        standard == "2WW" | standard == "31 Days" | standard == "62 Days")
+
+unique(selected_data$standard) # 557898 obs vs 705530 obs in provider_data 
+
+#check if there is still a significant increase in cancer cases without overlaps 
+selected_data %>% 
+  group_by(period) %>% 
+  summarise(total_treated = sum(total_treated)) %>%
+  ggplot(aes(x = period, 
+             y = total_treated)) + geom_line()
+#the increase in cancer cases isn't caused by counting overlapping cases 
+#checked *new* cancer cases per year and *total* cancer diagnosis per year - no significant increase 
+#the only explanation I can come up with is missing records in earlier years 
+#one justification for  using only 2019 data as baseline 
+
+#check if performance still fluctuates 
+grouped_period <- selected_data %>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_period$performance_avg <- grouped_period$sum_within / grouped_period$sum_treated
+
+grouped_period %>% 
+  ggplot(aes(x = period, 
+             y = performance_avg)) + geom_line()
+#confirming the overall trend of average performance is similar to what Ami has
+
+#closer look at individual performance rate from 2021 
+#can confirm the drop in overall trend is caused by inadequate performance even for prevalent cancer types 
+View(filter(selected_data, period >= as.Date("2021-01-01")))
+
+#select 2019-2021 daata and separate into three groups by year 
+avg_19 <- filter(grouped_period, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+avg_20 <- filter(grouped_period, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+avg_21 <- filter(grouped_period, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+
+#visualize changes in 2020 = subtracting the average performance by 2019 data
+months <- c(seq(1,12,1))
+changes_20 <- round((avg_20$performance_avg - avg_19$performance_avg),3)
+
+changes_20 <- data.frame(period = months, 
+                         change = changes_20)
+changes_20 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue", ) + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2020 (compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+#can see the rebound we talked about in May and June 
+
+#visualize changes in 2020 
+changes_21 <- round((avg_21$performance_avg - avg_19$performance_avg),3)
+
+changes_21 <- data.frame(period = months, 
+                         change = changes_21)
+changes_21 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue") + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2021 (compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+#no rebound like what we've seen in the 2020 graph 
+
+#I thought about doing t test on every month to prove the changes in performance rate are real
+#but I read something about underlying autocorrelation in time series data 
+#in order to properly perform a t test, removing autocorrelation needs to be done first 
+#i thought that would be adding more problems to our project so i decided to not do t tests 
+
+#same barplots for individual standard on all cancer types 
+#2WW
+#2020 vs 2019
+stan_2ww <- filter(provider_data, standard == "2WW")
+
+grouped_2ww <- stan_2ww %>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_2ww$performance_avg <- grouped_2ww$sum_within / grouped_2ww$sum_treated          
+                   
+stan_2ww_19 <- filter(grouped_2ww, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+stan_2ww_20 <- filter(grouped_2ww, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+stan_2ww_21 <- filter(grouped_2ww, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+
+changes_2ww_20 <- round((stan_2ww_20$performance_avg - stan_2ww_19$performance_avg),3)
+
+changes_2ww_20 <- data.frame(period = months, 
+                         change = changes_2ww_20)
+changes_2ww_20 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue", ) + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2020 in 2WW Standard(compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+#2021 vs 2019 
+changes_2ww_21 <- round((stan_2ww_21$performance_avg - stan_2ww_19$performance_avg),3)
+
+changes_2ww_21 <- data.frame(period = months, 
+                         change = changes_2ww_21)
+changes_2ww_21 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue") + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2021 in 2WW standard(compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+#31 Days
+#2020 vs 2019 
+stan_31d <- filter(provider_data, standard == "31 Days")
+
+grouped_31d <- stan_31d %>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_31d$performance_avg <- grouped_31d$sum_within / grouped_31d$sum_treated          
+
+stan_31d_19 <- filter(grouped_31d, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+stan_31d_20 <- filter(grouped_31d, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+stan_31d_21 <- filter(grouped_31d, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+
+changes_31d_20 <- round((stan_31d_20$performance_avg - stan_31d_19$performance_avg),3)
+
+changes_31d_20 <- data.frame(period = months, 
+                             change = changes_31d_20)
+changes_31d_20 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue", ) + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2020 in 31Days Standard(compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+#2021 vs 2019 
+changes_31d_21 <- round((stan_31d_21$performance_avg - stan_31d_19$performance_avg),3)
+
+changes_31d_21 <- data.frame(period = months, 
+                             change = changes_31d_21)
+changes_31d_21 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue") + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2021 in 31Days standard(compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+#62 Days 
+#2020 vs 2019
+stan_62d <- filter(provider_data, standard == "62 Days")
+
+grouped_62d <- stan_62d %>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_62d$performance_avg <- grouped_62d$sum_within / grouped_62d$sum_treated          
+
+stan_62d_19 <- filter(grouped_62d, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+stan_62d_20 <- filter(grouped_62d, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+stan_62d_21 <- filter(grouped_62d, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+
+changes_62d_20 <- round((stan_62d_20$performance_avg - stan_62d_19$performance_avg),3)
+
+changes_62d_20 <- data.frame(period = months, 
+                             change = changes_62d_20)
+changes_62d_20 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue", ) + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2020 in 62Days Standard(compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+#2021 vs 2019 
+changes_62d_21 <- round((stan_62d_21$performance_avg - stan_62d_19$performance_avg),3)
+
+changes_62d_21 <- data.frame(period = months, 
+                             change = changes_62d_21)
+changes_62d_21 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue") + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2021 in 62Days standard(compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+#same barplots for individual cancer types, all standards 
+lung_cancer <- filter(selected_data, 
+                      cancer_type == "Lung" | cancer_type == "Suspected lung cancer")
+
+breast_cancer <- filter(selected_data, 
+                      cancer_type == "Breast" | cancer_type == "Suspected breast cancer")
+
+grouped_lung <- lung_cancer %>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_lung$performance_avg <- grouped_lung$sum_within / grouped_lung$sum_treated
+
+
+grouped_breast <- breast_cancer %>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_breast$performance_avg <- grouped_breast$sum_within / grouped_breast$sum_treated
+
+#lung cancer 
+lung_19 <- filter(grouped_lung, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+lung_20 <- filter(grouped_lung, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+lung_21 <- filter(grouped_lung, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+
+#2020 vs 2019
+changes_lung_20 <- round((lung_20$performance_avg - lung_19$performance_avg),3)
+
+changes_lung_20 <- data.frame(period = months, 
+                         change = changes_lung_20)
+changes_lung_20 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue", ) + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2020 for Lung Cancer (compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+#2021 vs 2019
+changes_lung_21 <- round((lung_21$performance_avg - lung_19$performance_avg),3)
+
+changes_lung_21 <- data.frame(period = months, 
+                              change = changes_lung_21)
+changes_lung_21 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue", ) + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2021 for Lung Cancer (compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+#breast cancer 
+breast_19 <- filter(grouped_breast, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+breast_20 <- filter(grouped_breast, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+breast_21 <- filter(grouped_breast, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+
+#2020 vs 2019
+changes_breast_20 <- round((breast_20$performance_avg - breast_19$performance_avg),3)
+
+changes_breast_20 <- data.frame(period = months, 
+                              change = changes_breast_20)
+changes_breast_20 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue", ) + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2020 for Breast Cancer (compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+#2021 vs 2019
+changes_breast_21 <- round((breast_21$performance_avg - breast_19$performance_avg),3)
+
+changes_breast_21 <- data.frame(period = months, 
+                              change = changes_breast_21)
+changes_breast_21 %>%
+  ggplot(aes(x = period,
+             y = change)) + 
+  geom_bar(stat = "identity", fill = "steelblue", ) + 
+  geom_text(aes(label = change), vjust = -0.5) +
+  labs(x = "months", 
+       y = "changes in performance (percentage)",
+       title = "Percentage of Changes in Performance in 2021 for Breast Cancer (compared to same period in 2019)") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+                   
+                  
+
+########################################################################################################################################################
+#please ignore everything below 
+########################################################################################################################################################
+
+
+
+
 #necessary setup
 library(dplyr)
 library(readxl)
