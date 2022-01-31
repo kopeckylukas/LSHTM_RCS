@@ -235,6 +235,10 @@ changes_62d_21 %>%
   theme_bw() + 
   scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
 
+#cancer incidence grouped by cancer type
+selected_data %>% group_by(cancer_type) %>% count()
+#the sum of cases from "Lung" and "Suspected Lung cancer" roughly matches the number published by Cancer Research UK 
+#same with breast cancer 
 
 #same barplots for individual cancer types, all standards 
 lung_cancer <- filter(selected_data, 
