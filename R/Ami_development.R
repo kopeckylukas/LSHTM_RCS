@@ -549,20 +549,25 @@ plot(peak1_data$England, peak1_data$performance)
 
 
 
-peak1_cancer_breast_London <- 
+peak1_cancer_breast_62 <- 
   provider_level_data %>% 
   subset(period > "2020-03-01" & period < "2020-08-01") %>% 
   filter(cancer_type == "Breast") %>% 
-  filter(region_name == "LONDON COMMISSIONING REGION")
+  filter(standard == "62 Days")
 
 peak1_beds <- 
   Beds_regions %>% 
   subset(period > "2020-03-01" & period < "2020-08-01")
 
-peak1_cancer_breast_London_data <- 
-  left_join(peak1_cancer_breast_London, peak1_beds, by = c("period"))
+peak1_cancer_breast_62_data <- 
+  left_join(peak1_cancer_breast_62, peak1_beds, by = c("period"))
 
-plot(peak1_cancer_breast_London_data$London, peak1_cancer_breast_London_data$performance)
+
+ggplot(data = peak1_cancer_breast_62_data, 
+       aes(x = England, y = performance, group = region_name, color = region_name), 
+       group = region_name, color = region_name) + 
+  geom_point()
+
 
 
 #### Problem of the provider_level_data being monthly data while Beds is daily. 
@@ -570,6 +575,12 @@ plot(peak1_cancer_breast_London_data$London, peak1_cancer_breast_London_data$per
 
 
 #
+
+peak1_cancer_breast_London <- 
+  provider_level_data %>% 
+  subset(period > "2020-03-01" & period < "2020-08-01") %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(region_name == "LONDON COMMISSIONING REGION")
 
 
 
