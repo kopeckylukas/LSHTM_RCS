@@ -1,26 +1,657 @@
 # Amiiii! 
 
+
+####################################################################################################
+####################################################################################################
+# Setup
+
 ## Load libraries 
 library(tidyverse)
 library(ggplot2)
 library(xts)
+library(reshape2)
 
-# Load Cancer waiting time data 
+## Load Cancer waiting time data 
 library(readr)
-provider_level_data <- read_csv("provider_level_data.csv")
+provider_level_data <- read_csv("Data/provider_level_data.csv")
+Beds_regions <- read_csv("Data/Beds_regions.csv")
+names(Beds_regions)[names(Beds_regions) == "Date"] <- "period"
 
+
+
+## Check if there are any NAs 
+any(is.na(provider_level_data))
+#### TRUE
+
+## Inspect rows with NAs
+provider_NA <- provider_level_data[rowSums(is.na(provider_level_data)) > 0,]
+nrow(provider_NA)
+#### 17951 rows with NA data
+
+
+## Inspect the provider_code for NA rows 
+table(provider_NA$provider_code)
+table(provider_NA$period)
+
+
+## Remove rows with missing data -> We lack information and data to fill in the NA values 
+provider_level_data <- na.omit(provider_level_data)
+
+
+## Remove rows which have cancer_type = ALL CANCER
+#### ALL CANCER is a summary of each cancer type. Remove to avoid repetition. 
+provider_level_data <- filter(provider_level_data, cancer_type != "ALL CANCERS")
+
+
+## Remove rows which standard equals to "28 Days FDS" and "28 Days FDS (By Route)
+#### 28 Days Faster Diagnosis Standard started in 2019. Since our dataset starts in 2016, 
+#### We will remove this standard to avoid inflation of total treatments. 
+provider_level_data <- filter(provider_level_data, standard != "28 Days FDS")
+provider_level_data <- filter(provider_level_data, standard != "28 Days FDS (By Route)")
+
+
+#### We do not remove sub standards ( 31 Days Sub (Drugs), 31 Days Sub (Radio), 31 Days Sub (Surgery))
+#### Since they do not appear to be sub categories of the 31 Days standard. 
+
+
+
+
+
+
+
+
+
+####################################################################################################
+####################################################################################################
+# Exploratory Analysis 
+
+
+# Check total treated number by cancer types 
+
+## See the distribution of cancer types -> Number of rows with the cancer type 
+
+table(provider_level_data$cancer_type)
+prop.table(table(provider_level_data$cancer_type))
+
+cancer_count <- as.data.frame(table(provider_level_data$cancer_type))
+
+ggplot(data = cancer_count, aes(x = reorder(Var1, Freq), y = Freq)) + 
+  labs(title = "Counts of Cancer Types", x = "", y = "Counts") +
+  geom_bar(stat="identity") + 
+  coord_flip()
+
+#### We can see that Other, Lung, Lower Gastrointestinal and Breast appear frequently
+####  But how about the most treated cancer?
+
+
+## Total treated number by cancer type
+treated_by_cancer <- 
+  aggregate(provider_level_data$total_treated, by = list(Cancer = provider_level_data$cancer_type), FUN = sum)
+
+ggplot(data = treated_by_cancer, aes(x = reorder(Cancer, x), y = x)) + 
+  labs(title = "Counts of Total Treated Cancers by Cancer Type", x = "", y = "Counts") +
+  geom_bar(stat="identity") + 
+  coord_flip()
+
+#### It seems that the most treated cancer actually differs. 
+
+
+## plot a line plot for total treated number by cancer type 
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated) %>% 
+  group_by(period, cancer_type) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type, color = cancer_type)) +
+  geom_line() + ggtitle("Number of Treated Cancers by Cancer Type") + 
+  xlab("Years") + ylab("Number of Treated Cancer Cases") + 
+  theme_classic()
+
+#### Suspected skin cancer, Suspected breast cancer, suspected lower gastrointestinal cancer
+#### (Call them The 3 relavent suspect cancer types)
+#### Are the three most treated(or consulted) type of cancer
+#### We can see a clear increasing trend of these three cancers. 
+#### It doesn't seem that other cancers have too much of an increasing trend
+
+
+## Close up to Breast and Lung cancer 
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated) %>% 
+  group_by(period, cancer_type) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Breast" | cancer_type == "Lung")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type, color = cancer_type)) +
+  geom_line() + ggtitle("Number of Treated Cancers: Breast and Lung") + 
+  xlab("Years") + ylab("Number of Treated Cancer Cases") + 
+  theme_classic()
+
+#### It seems that Breast had Covid impact but Lung didn't have much 
+#### Doesn't seem like there is large decrease before Covid 
+
+
+
+
+
+
+
+
+
+
+
+
+# Check Total treated number by region 
+
+## See distribution of regions -> Number of rows with this region 
+table(provider_level_data$region_name)
+prop.table(table(provider_level_data$region_name))
+
+standard_count <- as.data.frame(table(provider_level_data$region_name))
+
+ggplot(data = standard_count, aes(x = reorder(Var1, Freq), y = Freq)) + 
+  labs(title = "Counts of Regions", x = "", y = "Counts") +
+  geom_bar(stat="identity") + 
+  coord_flip()
+
+#### London comissioning region has less counts 
+
+
+## Total treated number by region
+treated_by_region <- 
+  aggregate(provider_level_data$total_treated, by = list(Region = provider_level_data$region_name), FUN = sum)
+
+ggplot(data = treated_by_region, aes(x = reorder(Region, x), y = x)) + 
+  labs(title = "Counts of Total Treated Cancers by Region", x = "", y = "Counts") +
+  geom_bar(stat="identity") + 
+  coord_flip()
+
+#### It seems that these two distributions are fairly similar 
+
+
+# Plot total treated number by region 
+plot_data <- provider_level_data %>% 
+  select(period, region_name, total_treated) %>% 
+  group_by(period, region_name) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Number of Treated Cancers by Region") + 
+  xlab("Years") + ylab("Number of Treated Cancer Cases") + 
+  scale_shape_discrete(name = "test") + 
+  theme_classic()
+
+#### It seems that the 3 relevant suspected cancer types have a large impact on the pre-covid growth 
+
+
+# See the regional differences for breast cancer and lung cancer 
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, region_name) %>% 
+  group_by(period, cancer_type, region_name) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Breast")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Number of Treated Breast Cancer by Region") + 
+  xlab("Years") + ylab("Number of Treated Breast Cancer Cases") + 
+  theme_classic()
+
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, region_name) %>% 
+  group_by(period, cancer_type, region_name) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Lung")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Number of Treated Lung Cancer by Region") + 
+  xlab("Years") + ylab("Number of Treated Lung Cancer Cases") + 
+  theme_classic()
+
+
+#### Interesting difference 
+
+
+
+
+
+
+
+
+
+## How do the waiting standards differ for Lung and Breast cancer?
+
+lung_data <- provider_level_data %>% filter(cancer_type == "Lung")
+table(lung_data$standard)
+
+breast_data <- provider_level_data %>% filter(cancer_type == "Breast")
+table(breast_data$standard)
+
+#### Both are only for 31 Days and 62 Days 
+
+
+
+
+
+
+## Look at how total treated numbers look for different standards 
+
+## See distribution of standards -> Number of rows with this standard  
+table(provider_level_data$standard)
+prop.table(table(provider_level_data$standard))
+
+count <- as.data.frame(table(provider_level_data$standard))
+
+ggplot(data = count, aes(x = reorder(Var1, Freq), y = Freq)) + 
+  labs(title = "Counts of Standards", x = "", y = "Counts") +
+  geom_bar(stat="identity") + 
+  coord_flip()
+
+
+
+## Total treated number by standard
+treated_by_standard <- 
+  aggregate(provider_level_data$total_treated, by = list(Standard = provider_level_data$standard), FUN = sum)
+
+ggplot(data = treated_by_standard, aes(x = reorder(Standard, x), y = x)) + 
+  labs(title = "Counts of Total Treated Cancers by Standards", x = "", y = "Counts") +
+  geom_bar(stat="identity") + 
+  coord_flip()
+
+#### 2WW holds most of the treated cases. 
+
+
+## Check if the three suspected cancers are 2WW
+three_suspected_data <- 
+  provider_level_data %>% 
+  filter(cancer_type == "Suspected skin cancer" | cancer_type == "Suspected breast cancer" | cancer_type == "Suspected lower gastrointestinal cancer")
+
+table(three_suspected_data$standard)
+
+#### Yes, they are. 
+
+
+
+
+## Does Breast and cancer total treatments differ for the 31 and 62 waiting times?
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard) %>% 
+  group_by(period, cancer_type, standard) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Lung")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = standard, color = standard)) +
+  geom_line() + ggtitle("Number of Treated Lung Cancer by standard") + 
+  xlab("Years") + ylab("Number of Treated Lung Cancer Cases") + 
+  theme_classic()
+
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard) %>% 
+  group_by(period, cancer_type, standard) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Breast")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = standard, color = standard)) +
+  geom_line() + ggtitle("Number of Treated Breast Cancer by standard") + 
+  xlab("Years") + ylab("Number of Treated Breast Cancer Cases") + 
+  theme_classic()
+
+
+## Plot data by cancer type, waiting time, and region
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard, region_name) %>% 
+  group_by(period, cancer_type, standard, region_name) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Breast") %>%
+  filter(standard == "62 Days")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Number of Treated 62 Days Breast Cancer by Region") + 
+  xlab("Years") + ylab("Number of Treated Breast Cancer Cases") + 
+  theme_classic()
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard, region_name) %>% 
+  group_by(period, cancer_type, standard, region_name) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Breast") %>%
+  filter(standard == "31 Days")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Number of Treated 31 Days Breast Cancer by Region") + 
+  xlab("Years") + ylab("Number of Treated Breast Cancer Cases") + 
+  theme_classic()
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard, region_name) %>% 
+  group_by(period, cancer_type, standard, region_name) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Lung") %>%
+  filter(standard == "62 Days")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Number of Treated 62 Days Lung Cancer by Region") + 
+  xlab("Years") + ylab("Number of Treated Lung Cancer Cases") + 
+  theme_classic()
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard, region_name) %>% 
+  group_by(period, cancer_type, standard, region_name) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Lung") %>%
+  filter(standard == "31 Days")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Number of Treated 31 Days Lung Cancer by Region") + 
+  xlab("Years") + ylab("Number of Treated Lung Cancer Cases") + 
+  theme_classic()
+
+
+###########################################################################################
+## Check how the performance is 
+
+
+
+## Performance by cancer type
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard) %>% 
+  group_by(period, cancer_type) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop')
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = cancer_type, color = cancer_type)) +
+  geom_line() + ggtitle("Performance for Cancer Waiting Times by Cancer Type") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Cancer Type")+
+  theme_classic()
+
+
+#### It is very hard to interpret anything
+#### Urological (Excluding Testicular) seems to have low performance overall 
+
+
+## Performance of CWT by region. 
+## We will mean of sum to calculate average
+plot_data <- provider_level_data %>% 
+  select(period, region_name, total_treated, within_standard) %>% 
+  group_by(period, region_name) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop')
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Performance for Cancer Waiting Times by Region") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Commissioning Region")+
+  theme_classic()
+
+
+
+## Close up to Breast and Lung cancer 
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard) %>% 
+  group_by(period, cancer_type) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Breast" | cancer_type == "Lung")
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = cancer_type, color = cancer_type)) +
+  geom_line() + ggtitle("Performance for Cancer Waiting Times: Breast and Lung") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Cancer Type")+
+  theme_classic()
+
+
+## Split by waiting time 
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard, standard) %>% 
+  group_by(period, cancer_type, standard) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "62 Days" | standard == "31 Days")
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = standard, color = standard)) +
+  geom_line() + ggtitle("Performance for Breast Cancer Waiting Times by standard") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "standard")+
+  theme_classic()
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard, standard) %>% 
+  group_by(period, cancer_type, standard) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "62 Days" | standard == "31 Days")
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = standard, color = standard)) +
+  geom_line() + ggtitle("Performance for Lung Cancer Waiting Times by standard") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "standard")+
+  theme_classic()
+
+
+
+## Further consider region 
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard, standard, region_name) %>% 
+  group_by(period, cancer_type, standard, region_name) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "62 Days")
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Performance for 62 Days Lung Cancer Waiting Times by Region") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Region")+
+  theme_classic()
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard, standard, region_name) %>% 
+  group_by(period, cancer_type, standard, region_name) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "31 Days")
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Performance for 31 Days Lung Cancer Waiting Times by Region") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Region")+
+  theme_classic()
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard, standard, region_name) %>% 
+  group_by(period, cancer_type, standard, region_name) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "62 Days")
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Performance for 62 Days Breast Cancer Waiting Times by Region") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Region")+
+  theme_classic()
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard, standard, region_name) %>% 
+  group_by(period, cancer_type, standard, region_name) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "31 Days")
+
+ggplot(data = plot_data, aes(x = period, y = performance, group = region_name, color = region_name)) +
+  geom_line() + ggtitle("Performance for 31 Days Breast Cancer Waiting Times by Region") + 
+  xlab("Years") + ylab("Performance rate") + 
+  scale_color_discrete(name = "Region")+
+  theme_classic()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Check Covid bed occupancy data 
+ggplot(data = Beds_regions, aes(x = period, y = England)) + 
+  geom_line() + ggtitle("Number of Beds Occupied by Covid Patients in England") + 
+  xlab("Years") + ylab("Number of Beds") +
+  theme_classic()
+
+
+
+melt <- Beds_regions %>% 
+  select(-England)
+melt <- melt(melt, id.vars = "period", variable.name = "Region")
+
+ggplot(melt, aes(period, value)) +
+  geom_line(aes(colour = Region)) + 
+  ggtitle("Number of Beds Occupied by Covid Patients by Commisioning Region") + 
+  xlab("Years") + ylab("Number of Beds") + 
+  theme_classic()
+
+
+
+
+## Plot performance against bed occupancy 
+
+## Determine the Peaks for Covid 
+
+## Lets say for example 2020-03-20 to 2020-08-01 for first peak 
+ggplot(data = Beds_regions, aes(x = period, y = England)) + 
+  geom_line() + ggtitle("Number of Beds Occupied by Covid Patients in England") + 
+  xlab("Years") + ylab("Number of Beds") +
+  geom_vline(xintercept = as.numeric(as.Date("2020-07-12")), linetype = 4) +
+  theme_classic()
+
+#### VLINE NOT WORKING IDK WHY
+
+
+## plot peak1 
+peak1_cancer <-
+  provider_level_data %>% 
+  subset(period > "2020-03-01" & period < "2020-08-01")
+
+peak1_beds <- 
+  Beds_regions %>% 
+  subset(period > "2020-03-01" & period < "2020-08-01")
+
+peak1_data <- left_join(peak1_cancer, peak1_beds, by = c("period"))
+
+
+plot(peak1_data$England, peak1_data$performance)
+
+
+
+## Since there are repetition for days we will need to filter down 
+
+
+
+peak1_cancer_breast_62 <- 
+  provider_level_data %>% 
+  subset(period > "2020-03-01" & period < "2020-08-01") %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "62 Days")
+
+peak1_beds <- 
+  Beds_regions %>% 
+  subset(period > "2020-03-01" & period < "2020-08-01")
+
+peak1_cancer_breast_62_data <- 
+  left_join(peak1_cancer_breast_62, peak1_beds, by = c("period"))
+
+
+ggplot(data = peak1_cancer_breast_62_data, 
+       aes(x = England, y = performance, group = region_name, color = region_name), 
+       group = region_name, color = region_name) + 
+  geom_point()
+
+
+
+#### Problem of the provider_level_data being monthly data while Beds is daily. 
+#### We do not have enough data points 
+
+
+#
+
+peak1_cancer_breast_London <- 
+  provider_level_data %>% 
+  subset(period > "2020-03-01" & period < "2020-08-01") %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(region_name == "LONDON COMMISSIONING REGION")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Plot total 
+
+
+
+##############################################################################################
+
+# Junk
+ 
 # Load Number of covid patients in hospital data 
-# Convert daily data into monthly 
-CovidPatients_in_hospital <- read_csv("CovidPatients_in_hospital.csv")
+CovidPatients_in_hospital <- read_csv("Data/CovidPatients_in_hospital2.csv")
 CovidPatients_in_hospital$date <- as.Date(CovidPatients_in_hospital$date,  format = "%d/%m/%Y")
 colnames(CovidPatients_in_hospital) <- c("period", "hospital_cases")
 
 
 
+# Check if there are any NAs 
+any(is.na(provider_level_data))
+ # TRUE
+
+
+# Inspect rows with NAs
+provider_NA <- provider_level_data[rowSums(is.na(provider_level_data)) > 0,]
+nrow(provider_NA)
+ # 17951 rows with NA data
+
+
+# Inspect the provider_code for NA rows 
+table(provider_NA$provider_code)
+
+table(provider_NA$period)
 
 
 # Remove rows with missing data
 provider_level_data <- na.omit(provider_level_data)
+
+
+# Remove rows which have cancer_type = ALL CANCER
+provider_level_data <- filter(provider_level_data, cancer_type != "ALL CANCERS")
+
 
 # Notice that there are some cases with performance = 0
 # Notice that there are many rows where total_treated = 0 and decimals like 0.5
@@ -40,7 +671,11 @@ View(filter(provider_level_data, performance == 0))
 
 # nrow(provider_level_data)
 
-# See the distribution of cancer types 
+# See the distribution of cancer types
+
+table(provider_level_data$cancer_type)
+prop.table(table(provider_level_data$cancer_type))
+
 cancer_count <- as.data.frame(table(provider_level_data$cancer_type))
 
 ggplot(data = cancer_count, aes(x = reorder(Var1, Freq), y = Freq)) + 
@@ -49,7 +684,11 @@ ggplot(data = cancer_count, aes(x = reorder(Var1, Freq), y = Freq)) +
   coord_flip()
 
 
+
 # See the distribution of different standard times
+table(provider_level_data$standard)
+prop.table(table(provider_level_data$standard))
+
 standard_count <- as.data.frame(table(provider_level_data$standard))
 
 ggplot(data = standard_count, aes(x = reorder(Var1, Freq), y = Freq)) + 
@@ -58,9 +697,25 @@ ggplot(data = standard_count, aes(x = reorder(Var1, Freq), y = Freq)) +
   coord_flip()
 
 
+# See distribution of regions 
+table(provider_level_data$region_name)
+prop.table(table(provider_level_data$region_name))
+
+standard_count <- as.data.frame(table(provider_level_data$region_name))
+
+ggplot(data = standard_count, aes(x = reorder(Var1, Freq), y = Freq)) + 
+  labs(title = "Counts of Regions", x = "", y = "Counts") +
+  geom_bar(stat="identity") + 
+  coord_flip()
+
+
 # See the distribution of the performance 
 ggplot(data = provider_level_data, aes(x = performance)) +
   geom_histogram()
+
+summary(provider_level_data$performance)
+
+sum(provider_level_data$within_standard)/sum(provider_level_data$total_treated)
 
 
 # Check performance by standard 
@@ -145,7 +800,7 @@ ggplot(data = provider_plot_data3, aes(x = period, y = breaches, group = region_
 
 
 # Add number of covid patients in hospitals to the total_treated plot
-ylim.prim <- c(0, 250000)
+ylim.prim <- c(0, 240000)
 ylim.sec <- c(0, 40000)
 
 b <- diff(ylim.prim)/diff(ylim.sec)
@@ -161,9 +816,9 @@ ggplot() +
   geom_line(data = CovidPatients_in_hospital, 
             aes(x = period, y = a + hospital_cases*b))+ 
   scale_color_discrete(name = "Commissioning Region")+
-  scale_y_continuous("Number of Treated Cancer Cases", 
-                     sec.axis = sec_axis(~ (. - a)/b, name = "Number of Covid Patients in Hospital"))+
-  theme_minimal()
+  scale_y_continuous("\nNumber of Treated Cancer Cases", 
+                     sec.axis = sec_axis(~ (. - a)/b, name = "\nNumber of Covid Patients in Hospital"))+
+  theme_classic()
 
 
 
@@ -202,7 +857,7 @@ ggplot(data = provider_plot_data4, aes(x = period, y = performance, group = canc
   geom_line() + ggtitle("Performance for Cancer Waiting Times") + 
   xlab("Years") + ylab("Performance rate") + 
   scale_color_discrete(name = "Commissioning Region")+
-  theme_minimal()
+  theme_classic()
 
 
 
