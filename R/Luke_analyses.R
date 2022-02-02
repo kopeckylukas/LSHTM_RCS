@@ -48,6 +48,26 @@ prov3 <- prov %>% filter(standard == "31 Days" & cancer_type == "ALL CANCERS")
 prov3 <- prov3 %>% group_by(period) %>% summarise(mean(performance), sum(within_standard)/sum(total_treated))
 
 ggplot() + geom_line(data = com3, aes(x = period, y = `mean(performance)`, colour = 'Commissioner Level')) +
-  geom_line(data = prov3, aes(x = period, y = `mean(performance)`, colour = 'Provider Level'))
+  geom_line(data = prov3, aes(x = period, y = `mean(performance)`, colour = 'Provider Level')) + theme_bw()
+
+
+r <- prov %>% filter( cancer_type == "Lung")
+unique(r[c("standard")])
+
+
+# 2 Week Wait data
+com2ww <- com %>% filter (standard == "ALL CANCERS TWO WEEK WAIT" )
+com2ww <- com2ww %>% group_by(period) %>% summarise(mean(performance),sum(within_standard)/sum(total_treated))
+com2ww$level <- "Commissioner Level"
+
+
+prov2ww <- prov %>% filter(standard == "2WW")
+prov2ww <- prov2ww %>% group_by(period) %>% summarise(mean(performance), sum(within_standard)/sum(total_treated))
+
+prov2ww$level <- "Provider Level"
+
+
+ww2 <- rbind( prov2ww, com2ww)
+
 
 
