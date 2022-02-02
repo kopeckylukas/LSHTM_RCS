@@ -5,11 +5,14 @@
 ####################################################################################################
 # Setup
 
+install.packages("RColorBrewer")
+
 ## Load libraries 
 library(tidyverse)
 library(ggplot2)
 library(xts)
 library(reshape2)
+library(RColorBrewer)
 
 ## Load Cancer waiting time data 
 library(readr)
@@ -129,6 +132,7 @@ plot_data <- provider_level_data %>%
 ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type, color = cancer_type)) +
   geom_line() + ggtitle("Number of Treated Cancers: Breast and Lung") + 
   xlab("Years") + ylab("Number of Treated Cancer Cases") + 
+  scale_color_manual(breaks = plot_data$cancer_type, values = c("#DF65B0", "#3690C0")) +
   theme_classic()
 
 #### It seems that Breast had Covid impact but Lung didn't have much 
