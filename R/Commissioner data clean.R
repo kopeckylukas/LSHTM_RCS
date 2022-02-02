@@ -2,9 +2,9 @@ library("tidyverse")
 library("readxl")
 
 {
-  path <- "data/com_data/2021/OCTOBER-2021-CANCER-WAITING-TIMES-COMMISSIONER-WORKBOOK-PROVISIONAL.xlsx"
-  period <- as.Date('2021-10-01') #yyy-mm-dd
-  newName <- "data/com_done/october-21.csv"
+  path <- "data/com_data/19-20/DECEMBER-2019-CANCER-WAITING-TIMES-COMMISSIONER-WORKBOOK-PROVISIONAL.xlsx"
+  period <- as.Date('2019-12-01') #yyy-mm-dd
+  newName <- "data/com_done/december-2019.csv"
   
   
   sheet_no <- length(excel_sheets(path))
