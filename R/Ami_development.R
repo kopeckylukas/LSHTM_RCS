@@ -50,10 +50,11 @@ provider_level_data <- filter(provider_level_data, standard != "28 Days FDS")
 provider_level_data <- filter(provider_level_data, standard != "28 Days FDS (By Route)")
 
 
-#### We do not remove sub standards ( 31 Days Sub (Drugs), 31 Days Sub (Radio), 31 Days Sub (Surgery))
-#### Since they do not appear to be sub categories of the 31 Days standard. 
+#### We remove sub standards ( 31 Days Sub (Drugs), 31 Days Sub (Radio), 31 Days Sub (Surgery))
 
-
+provider_level_data <- filter(provider_level_data, standard != "31 Days Sub (Drugs)")
+provider_level_data <- filter(provider_level_data, standard != "31 Days Sub (Radio)")
+provider_level_data <- filter(provider_level_data, standard != "31 Days Sub (Surgery)")
 
 
 
@@ -89,9 +90,10 @@ treated_by_cancer <-
   aggregate(provider_level_data$total_treated, by = list(Cancer = provider_level_data$cancer_type), FUN = sum)
 
 ggplot(data = treated_by_cancer, aes(x = reorder(Cancer, x), y = x)) + 
-  labs(title = "Counts of Total Treated Cancers by Cancer Type", x = "", y = "Counts") +
+  labs(title = "Number of Treated Cancers ", x = "", y = "Counts") +
   geom_bar(stat="identity") + 
-  coord_flip()
+  coord_flip() + 
+  theme_bw()
 
 #### It seems that the most treated cancer actually differs. 
 
@@ -105,7 +107,10 @@ plot_data <- provider_level_data %>%
 ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type, color = cancer_type)) +
   geom_line() + ggtitle("Number of Treated Cancers by Cancer Type") + 
   xlab("Years") + ylab("Number of Treated Cancer Cases") + 
-  theme_classic()
+  scale_color_discrete(name = "Cancer Type") +
+  theme_bw()
+
+
 
 #### Suspected skin cancer, Suspected breast cancer, suspected lower gastrointestinal cancer
 #### (Call them The 3 relavent suspect cancer types)
