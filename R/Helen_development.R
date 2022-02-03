@@ -5,21 +5,35 @@
 ########################################################################################################################################################
 
 #try putting 2020 and 2021 changes in one plot 
+changes_20 <- 100*round((avg_20$performance_avg - avg_19$performance_avg),3)
 changes_20 <- add_column(changes_20, year = "2020")
+changes_20 <- data.frame(period = months, 
+                         change = changes_20)
+
+changes_21 <- 100*round((avg_21$performance_avg - avg_19$performance_avg),3)
 changes_21 <- add_column(changes_21, year = "2021")
+months24 <- c(seq(13,24,1))
+changes_21 <- data.frame(period = months24, 
+                         change = changes_21)
+
 all_changes <- rbind(changes_20, changes_21)
 
 all_changes %>% ggplot(aes(x = period, 
                            y = change, 
                            fill = year)) + 
-  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
-  scale_fill_manual(values = c("#a6bddb", "#fdbb84")) +
-  geom_text(aes(label = change), vj) + 
+  geom_bar(stat = "identity") + 
+  scale_fill_manual(values = c("deepskyblue3", "deepskyblue4")) +
+  geom_text(aes(label = change), hjust = 0.5, vjust = "top") + 
   labs(x = "months", 
-       y = "changes in performance (percentage)", 
-       title = "Performance Rate Changes in 2020 and 2021 (compared to same period in 2019") +
+       y = "changes in performance (%)", 
+       title = "Performance Changes in 2020 and 2021", 
+       subtitle = "compared to same period in 2019") +
   theme_bw() + 
-  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+  scale_x_discrete(limits = c("Jan 20", "Feb 20", "Mar 20", "Apr 20", "May 20", "Jun 20", "July 20", "Aug 20", "Sep 20", "Oct 20","Nov 20","Dec 20", 
+                              "Jan 21", "Feb 21", "Mar 21", "Apr 21", "May 21", "Jun 21", "July 21", "Aug 21", "Sep 21", "Oct 21","Nov 21","Dec 21"))
+#ggsave("performance changes in 2020 and 2021.png", plot = last_plot())
+
+
 
 #########################################################################################################
 #lung cancer and breast cancer 
