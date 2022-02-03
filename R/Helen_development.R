@@ -1,6 +1,374 @@
 ## HELEN!!! 
 
 ########################################################################################################################################################
+#updates from Feb 2nd
+########################################################################################################################################################
+
+#try putting 2020 and 2021 changes in one plot 
+changes_20 <- add_column(changes_20, year = "2020")
+changes_21 <- add_column(changes_21, year = "2021")
+all_changes <- rbind(changes_20, changes_21)
+
+all_changes %>% ggplot(aes(x = period, 
+                           y = change, 
+                           fill = year)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#a6bddb", "#fdbb84")) +
+  geom_text(aes(label = change), vj) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in 2020 and 2021 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+#########################################################################################################
+#lung cancer and breast cancer 
+#just "Lung" and "Breast", not including "Suspected lung cancer" or "Suspected Breast Cancer"
+
+lung<- filter(selected_data, cancer_type == "Lung")
+
+breast <- filter(selected_data, cancer_type == "Breast")
+
+grouped_lung <- lung%>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_lung$performance_avg <- grouped_lung$sum_within / grouped_lung$sum_treated
+
+
+grouped_breast <- breast %>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_breast$performance_avg <- grouped_breast$sum_within / grouped_breast$sum_treated
+
+lung_19 <- filter(grouped_lung, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+lung_20 <- filter(grouped_lung, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+lung_21 <- filter(grouped_lung, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+lung_21 <- add_row(lung_21, period =as.Date("2021-12-01"), sum_treated=3916, sum_within=3420, performance_avg=0.873)
+
+
+breast_19 <- filter(grouped_breast, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+breast_20 <- filter(grouped_breast, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+breast_21 <- filter(grouped_breast, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+breast_21 <- add_row(breast_21, period =as.Date("2021-12-01"), sum_treated=6657, sum_within=5919, performance_avg=0.889)
+
+#2020 vs 2019 
+changes_lung_20 <- 100*round((lung_20$performance_avg - lung_19$performance_avg),3)
+
+changes_lung_20 <- data.frame(period = months, 
+                              change = changes_lung_20)
+
+changes_breast_20 <- 100*round((breast_20$performance_avg - breast_19$performance_avg),3)
+
+changes_breast_20 <- data.frame(period = months, 
+                                change = changes_breast_20)
+
+changes_lung_20 <- add_column(changes_lung_20, type = "Lung")
+changes_breast_20 <- add_column(changes_breast_20, type = "Breast")
+lung_breast_20 <- rbind(changes_lung_20, changes_breast_20)
+
+lung_breast_20 %>% ggplot(aes(x = period, 
+                           y = change, 
+                           fill = type)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#DF65B0", "#3690C0")) +
+  geom_text(aes(label = change)) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in Lung and Breast Cancer, 2020 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+#2021 vs 2019
+changes_lung_21 <- 100*round((lung_21$performance_avg - lung_19$performance_avg),3)
+
+changes_lung_21 <- data.frame(period = months, 
+                              change = changes_lung_21)
+
+changes_breast_21 <- 100*round((breast_21$performance_avg - breast_19$performance_avg),3)
+
+changes_breast_21 <- data.frame(period = months, 
+                                change = changes_breast_21)
+
+changes_lung_21 <- add_column(changes_lung_21, type = "Lung")
+changes_breast_21 <- add_column(changes_breast_21, type = "Breast")
+lung_breast_21 <- rbind(changes_lung_21, changes_breast_21)
+
+lung_breast_21 %>% ggplot(aes(x = period, 
+                              y = change, 
+                              fill = type)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#DF65B0", "#3690C0")) +
+  geom_text(aes(label = change)) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in Lung and Breast Cancer, 2021 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+###############################################################################################################
+#Lung by 31D and 62D standards 
+
+lung_31<- filter(selected_data, cancer_type == "Lung" & standard == "31 Days")
+lung_62<- filter(selected_data, cancer_type == "Lung"& standard == "62 Days")
+
+grouped_lung_31 <- lung_31%>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_lung_31$performance_avg <- grouped_lung_31$sum_within / grouped_lung_31$sum_treated
+
+grouped_lung_62 <- lung_62%>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_lung_62$performance_avg <- grouped_lung_62$sum_within / grouped_lung_62$sum_treated
+
+lung_31_19 <- filter(grouped_lung_31, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+lung_31_20 <- filter(grouped_lung_31, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+lung_31_21 <- filter(grouped_lung_31, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+lung_31_21 <- add_row(lung_31_21, period =as.Date("2021-12-01"), sum_treated=2985, sum_within=2870, performance_avg=0.961)
+
+lung_62_19 <- filter(grouped_lung_62, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+lung_62_20 <- filter(grouped_lung_62, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+lung_62_21 <- filter(grouped_lung_62, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+lung_62_21 <- add_row(lung_62_21, period =as.Date("2021-12-01"), sum_treated=931, sum_within=550, performance_avg=0.591)
+
+#2020 vs 2019 
+changes_lung_31_20 <- 100*round((lung_31_20$performance_avg - lung_31_19$performance_avg),3)
+
+changes_lung_31_20 <- data.frame(period = months, 
+                              change = changes_lung_31_20)
+
+changes_lung_62_20 <- 100*round((lung_62_20$performance_avg - lung_62_19$performance_avg),3)
+
+changes_lung_62_20 <- data.frame(period = months, 
+                                 change = changes_lung_62_20)
+
+changes_lung_31_20 <- add_column(changes_lung_31_20, standard = "31 Days")
+changes_lung_62_20 <- add_column(changes_lung_62_20, standard = "62 Days")
+lung_31d62d_20 <- rbind(changes_lung_31_20, changes_lung_62_20)
+
+lung_31d62d_20 %>% ggplot(aes(x = period, 
+                              y = change, 
+                              fill = standard)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#bcbddc", "#756bb1")) +
+  geom_text(aes(label = change)) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in Lung Cancer by Standards, 2020 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+#2021 vs 2019 
+changes_lung_31_21 <- 100*round((lung_31_21$performance_avg - lung_31_19$performance_avg),3)
+
+changes_lung_31_21 <- data.frame(period = months, 
+                                 change = changes_lung_31_21)
+
+changes_lung_62_21 <- 100*round((lung_62_21$performance_avg - lung_62_19$performance_avg),3)
+
+changes_lung_62_21 <- data.frame(period = months, 
+                                 change = changes_lung_62_21)
+
+changes_lung_31_21 <- add_column(changes_lung_31_21, standard = "31 Days")
+changes_lung_62_21 <- add_column(changes_lung_62_21, standard = "62 Days")
+lung_31d62d_21 <- rbind(changes_lung_31_21, changes_lung_62_21)
+
+lung_31d62d_21 %>% ggplot(aes(x = period, 
+                              y = change, 
+                              fill = standard)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#bcbddc", "#756bb1")) +
+  geom_text(aes(label = change)) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in Lung Cancer by Standards, 2021 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+
+################################################################################################
+#breast by 31D and 62D standards 
+
+breast_31<- filter(selected_data, cancer_type == "Breast" & standard == "31 Days")
+breast_62<- filter(selected_data, cancer_type == "Breast"& standard == "62 Days")
+
+grouped_breast_31 <- breast_31%>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_breast_31$performance_avg <- grouped_breast_31$sum_within / grouped_breast_31$sum_treated
+
+grouped_breast_62 <- breast_62%>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_breast_62$performance_avg <- grouped_breast_62$sum_within / grouped_breast_62$sum_treated
+
+breast_31_19 <- filter(grouped_breast_31, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+breast_31_20 <- filter(grouped_breast_31, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+breast_31_21 <- filter(grouped_breast_31, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+breast_31_21 <- add_row(breast_31_21, period =as.Date("2021-12-01"), sum_treated=4439, sum_within=4147, performance_avg=0.934)
+
+breast_62_19 <- filter(grouped_breast_62, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+breast_62_20 <- filter(grouped_breast_62, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+breast_62_21 <- filter(grouped_breast_62, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+breast_62_21 <- add_row(breast_62_21, period =as.Date("2021-12-01"), sum_treated=2218, sum_within=1772, performance_avg=0.799)
+
+#2020 vs 2019 
+changes_breast_31_20 <- 100*round((breast_31_20$performance_avg - breast_31_19$performance_avg),3)
+
+changes_breast_31_20 <- data.frame(period = months, 
+                                 change = changes_breast_31_20)
+
+changes_breast_62_20 <- 100*round((breast_62_20$performance_avg - breast_62_19$performance_avg),3)
+
+changes_breast_62_20 <- data.frame(period = months, 
+                                 change = changes_breast_62_20)
+
+changes_breast_31_20 <- add_column(changes_breast_31_20, standard = "31 Days")
+changes_breast_62_20 <- add_column(changes_breast_62_20, standard = "62 Days")
+breast_31d62d_20 <- rbind(changes_breast_31_20, changes_breast_62_20)
+
+breast_31d62d_20 %>% ggplot(aes(x = period, 
+                              y = change, 
+                              fill = standard)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#bcbddc", "#756bb1")) +
+  geom_text(aes(label = change)) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in Breast Cancer by Standards, 2020 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+#2021 vs 2019 
+changes_breast_31_21 <- 100*round((breast_31_21$performance_avg - breast_31_19$performance_avg),3)
+
+changes_breast_31_21 <- data.frame(period = months, 
+                                 change = changes_breast_31_21)
+
+changes_breast_62_21 <- 100*round((breast_62_21$performance_avg - breast_62_19$performance_avg),3)
+
+changes_breast_62_21 <- data.frame(period = months, 
+                                 change = changes_breast_62_21)
+
+changes_breast_31_21 <- add_column(changes_breast_31_21, standard = "31 Days")
+changes_breast_62_21 <- add_column(changes_breast_62_21, standard = "62 Days")
+breast_31d62d_21 <- rbind(changes_breast_31_21, changes_breast_62_21)
+
+breast_31d62d_21 %>% ggplot(aes(x = period, 
+                              y = change, 
+                              fill = standard)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#bcbddc", "#756bb1")) +
+  geom_text(aes(label = change)) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in Breast Cancer by Standards, 2021 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+
+###################################################################################################
+#2WW standard, Suspected lung and breast cancer 
+
+suspected_lung<- filter(selected_data, cancer_type == "Suspected lung cancer" & standard == "2WW")
+suspected_breast<- filter(selected_data, cancer_type == "Suspected breast cancer" & standard == "2WW")
+
+grouped_suspected_lung <- suspected_lung%>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_suspected_lung$performance_avg <- grouped_suspected_lung$sum_within / grouped_suspected_lung$sum_treated
+
+grouped_suspected_breast <- suspected_breast%>%
+  group_by(period) %>% 
+  summarise(sum_treated = sum(total_treated), sum_within = sum(within_standard))
+
+grouped_suspected_breast$performance_avg <- grouped_suspected_breast$sum_within / grouped_suspected_breast$sum_treated
+
+suspected_lung_19 <- filter(grouped_suspected_lung, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+suspected_lung_20 <- filter(grouped_suspected_lung, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+suspected_lung_21 <- filter(grouped_suspected_lung, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+suspected_lung_21 <- add_row(suspected_lung_21, period =as.Date("2021-12-01"), sum_treated=5317, sum_within=4848, performance_avg=0.912)
+
+suspected_breast_19 <- filter(grouped_suspected_breast, period >= as.Date("2019-01-01") & period <= as.Date("2019-12-01"))
+suspected_breast_20 <- filter(grouped_suspected_breast, period >= as.Date("2020-01-01") & period <= as.Date("2020-12-01"))
+suspected_breast_21 <- filter(grouped_suspected_breast, period >= as.Date("2021-01-01") & period <= as.Date("2021-11-01"))
+suspected_breast_21 <- add_row(suspected_breast_21, period =as.Date("2021-12-01"), sum_treated=49143, sum_within=25439, performance_avg=0.518)
+
+
+#2020 vs 2019 
+changes_suspected_lung_20 <- 100*round((suspected_lung_20$performance_avg - suspected_lung_19$performance_avg),3)
+
+changes_suspected_lung_20 <- data.frame(period = months, 
+                                   change = changes_suspected_lung_20)
+
+changes_suspected_breast_20 <- 100*round((suspected_breast_20$performance_avg -suspected_breast_19$performance_avg),3)
+
+changes_suspected_breast_20 <- data.frame(period = months, 
+                                   change = changes_suspected_breast_20)
+
+changes_suspected_lung_20 <- add_column(changes_suspected_lung_20, type = "Suspected lung cancer")
+changes_suspected_breast_20 <- add_column(changes_suspected_breast_20, type = "Suspected breast cancer")
+changes_suspected_20 <- rbind(changes_suspected_lung_20, changes_suspected_breast_20)
+
+changes_suspected_20 %>% ggplot(aes(x = period, 
+                                y = change, 
+                                fill = type)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#DF65B0", "#3690C0")) +
+  geom_text(aes(label = change)) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in Suspected Lung and Breast Cancer, 2020 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+#2021 vs 2019 
+changes_suspected_lung_21 <- 100*round((suspected_lung_21$performance_avg - suspected_lung_19$performance_avg),3)
+
+changes_suspected_lung_21 <- data.frame(period = months, 
+                                        change = changes_suspected_lung_21)
+
+changes_suspected_breast_21 <- 100*round((suspected_breast_21$performance_avg -suspected_breast_19$performance_avg),3)
+
+changes_suspected_breast_21 <- data.frame(period = months, 
+                                          change = changes_suspected_breast_21)
+
+changes_suspected_lung_21 <- add_column(changes_suspected_lung_21, type = "Suspected lung cancer")
+changes_suspected_breast_21 <- add_column(changes_suspected_breast_21, type = "Suspected breast cancer")
+changes_suspected_21 <- rbind(changes_suspected_lung_21, changes_suspected_breast_21)
+
+changes_suspected_20 %>% ggplot(aes(x = period, 
+                                    y = change, 
+                                    fill = type)) + 
+  geom_bar(stat = "identity", color = "black", position = position_dodge()) + 
+  scale_fill_manual(values = c("#DF65B0", "#3690C0")) +
+  geom_text(aes(label = change)) + 
+  labs(x = "months", 
+       y = "changes in performance (percentage)", 
+       title = "Performance Rate Changes in Suspected Lung and Breast Cancer, 2021 (compared to same period in 2019") +
+  theme_bw() + 
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct","Nov","Dec"))
+
+
+
+
+
+
+
+########################################################################################################################################################
 #updates from Jan 31st
 ########################################################################################################################################################
 
