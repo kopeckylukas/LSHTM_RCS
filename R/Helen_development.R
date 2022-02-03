@@ -1,5 +1,39 @@
 ## HELEN!!! 
 
+############################################################################################################3
+#making a timeline with ggplot
+############################################################################################################
+df <- read.csv("timeline.csv")
+
+type_color <- c("#999999", "#E69F00", "#56B4E9")
+type_level <- c("lockdown", "service", "reopen")
+
+
+timeline_plot <- df%>%
+  ggplot(aes(x=date,y= position, label=milestone)) + 
+  labs(col="milestone") + 
+  theme_classic() + 
+  geom_hline(yintercept=0, color = "black", size=0.8) + 
+  geom_segment(aes(y=position,yend=0,xend=date), color='black', size=0.4) + 
+  geom_point(aes(y=position), size=3) + 
+  scale_color_manual(values=type_color,labels = type_level) +
+  theme(axis.line.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.text.x =element_blank(),
+        axis.ticks.x =element_blank(),
+        axis.line.x =element_blank(),
+        legend.position = "bottom"
+  ) + 
+  geom_text(aes(y=-0.10,label=month),fontface="bold",size=3.5,vjust=0.5, color='black') + 
+  geom_text(aes(y=position-0.1,label=milestone),size=3.5, vjust=0.6)
+
+timeline_plot  
+ggsave("timeline.png", plot = timeline_plot)
+
+
 ########################################################################################################################################################
 #updates from Feb 2nd
 ########################################################################################################################################################
