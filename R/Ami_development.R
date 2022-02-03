@@ -18,8 +18,8 @@ library(RColorBrewer)
 library(readr)
 provider_level_data <- read_csv("Data/provider_level_data.csv")
 Beds_regions <- read_csv("Data/Beds_regions.csv")
-names(Beds_regions)[names(Beds_regions) == "Date"] <- "period"
-
+# names(Beds_regions)[names(Beds_regions) == "Date"] <- "period"
+Beds_regions$Date = as.Date(Beds_regions$Date, format = "%Y-%m-%d")
 
 
 ## Check if there are any NAs 
@@ -60,6 +60,10 @@ provider_level_data <- filter(provider_level_data, standard != "31 Days Sub (Rad
 provider_level_data <- filter(provider_level_data, standard != "31 Days Sub (Surgery)")
 
 
+### Drop 2WW Breast as well 
+provider_level_data <- filter(provider_level_data, standard != "2WW Breast")
+
+
 
 
 
@@ -82,7 +86,8 @@ cancer_count <- as.data.frame(table(provider_level_data$cancer_type))
 ggplot(data = cancer_count, aes(x = reorder(Var1, Freq), y = Freq)) + 
   labs(title = "Counts of Cancer Types", x = "", y = "Counts") +
   geom_bar(stat="identity") + 
-  coord_flip()
+  coord_flip()+ 
+  theme_bw()
 
 #### We can see that Other, Lung, Lower Gastrointestinal and Breast appear frequently
 ####  But how about the most treated cancer?
@@ -101,6 +106,38 @@ ggplot(data = treated_by_cancer, aes(x = reorder(Cancer, x), y = x)) +
 #### It seems that the most treated cancer actually differs. 
 
 
+## plot for total cases against covid  
+ylim.prim <- c(min(plot_data$total_treated), max(plot_data$total_treated))
+ylim.sec <- c(min(Beds_regions$England), max(Beds_regions$England))
+
+b <- diff(ylim.prim)/diff(ylim.sec)
+a <- ylim.prim[1] - b*ylim.sec[1]
+
+plot_data <- provider_level_data %>% 
+  select(period, total_treated) %>% 
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+ggplot() +
+  geom_line(data = plot_data, 
+            aes(x = period, y = total_treated), color = "hotpink") +
+  ggtitle("Number of Treated Cancers and Number of beds occupied by covid patients in Hospital") + 
+  xlab("Years") + ylab("Number of Treated Cancer Cases")+
+  geom_line(data = Beds_regions, 
+            aes(x = Date, y = a + England*b), color = "black")+ 
+  scale_y_continuous("\nNumber of Treated Cancer Cases", 
+                     sec.axis = sec_axis(~ (. - a)/b, name = "\nNumber of beds occupied by covid patients"))+
+  theme_bw() + 
+  theme(axis.title.y.left = element_text(colour = "hotpink"), 
+        axis.title.y.right = element_text(colour = "black")) 
+
+
+
+## Plot for performance with covid patients 
+
+
+
+
 ## plot a line plot for total treated number by cancer type 
 plot_data <- provider_level_data %>% 
   select(period, cancer_type, total_treated) %>% 
@@ -114,6 +151,22 @@ ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type,
   theme_bw()
 
 
+### Select only relevant data 
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated) %>% 
+  group_by(period, cancer_type) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(total_treated > 10000 | cancer_type == "Breast" | cancer_type == "Lung" 
+         | cancer_type == "Suspected lung cancer" | cancer_type == "Suspected breast cancer"
+         | cancer_type == "Other")
+
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type, color = cancer_type)) +
+  geom_line() + ggtitle("Number of Treated Cancers by Cancer Type") + 
+  xlab("Years") + ylab("Number of Treated Cancer Cases") + 
+  scale_color_discrete(name = "Cancer Type") +
+  theme_bw() 
+
 
 #### Suspected skin cancer, Suspected breast cancer, suspected lower gastrointestinal cancer
 #### (Call them The 3 relavent suspect cancer types)
@@ -122,9 +175,14 @@ ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type,
 #### It doesn't seem that other cancers have too much of an increasing trend
 
 
+### Change name of suspected breast cancer -> breast 
+### and suspected lung cancer -> lung 
+provider_level_data <- provider_level_data %>% 
+  mutate(cancer_type = recode(cancer_type, "Suspected lung cancer" = "Lung", "Suspected breast cancer" = "Breast"))
+
 ## Close up to Breast and Lung cancer 
 plot_data <- provider_level_data %>% 
-  select(period, cancer_type, total_treated) %>% 
+  select(period, cancer_type, total_treated, standard) %>% 
   group_by(period, cancer_type) %>%
   summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
   filter(cancer_type == "Breast" | cancer_type == "Lung")
@@ -133,12 +191,43 @@ ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type,
   geom_line() + ggtitle("Number of Treated Cancers: Breast and Lung") + 
   xlab("Years") + ylab("Number of Treated Cancer Cases") + 
   scale_color_manual(breaks = plot_data$cancer_type, values = c("#DF65B0", "#3690C0")) +
-  theme_classic()
+  theme_bw()
+
+
 
 #### It seems that Breast had Covid impact but Lung didn't have much 
 #### Doesn't seem like there is large decrease before Covid 
 
 
+## Breast and Lung by waiting time 
+provider_level_data <- provider_level_data %>% 
+  mutate(standard = replace(standard, standard == "2WW", "2WW for Suspected Cancer"))
+
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard) %>% 
+  group_by(period, cancer_type, standard) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Lung")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = standard, color = standard)) +
+  geom_line() + ggtitle("Number of Treated Lung Cancer by standard") + 
+  xlab("Years") + ylab("Number of Treated Lung Cancer Cases") + 
+  theme_classic() + 
+  scale_color_brewer(palette = "Paired")
+
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard) %>% 
+  group_by(period, cancer_type, standard) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Breast")
+
+ggplot(data = plot_data, aes(x = period, y = total_treated, group = standard, color = standard)) +
+  geom_line() + ggtitle("Number of Treated Breast Cancer by standard") + 
+  xlab("Years") + ylab("Number of Treated Breast Cancer Cases") + 
+  theme_classic()+ 
+  scale_color_brewer(palette = "Paired")
 
 
 
@@ -815,6 +904,10 @@ ylim.sec <- c(0, 40000)
 b <- diff(ylim.prim)/diff(ylim.sec)
 a <- ylim.prim[1] - b*ylim.sec[1]
 
+provider_plot_data2 <- provider_level_data %>% 
+  select(period, region_name, total_treated) %>% 
+  group_by(period, region_name) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
 
 ggplot() +
   geom_line(data = provider_plot_data2, 
