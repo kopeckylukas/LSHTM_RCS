@@ -16,6 +16,8 @@ library(RColorBrewer)
 
 ## Load Cancer waiting time data 
 library(readr)
+library(readxl)
+Beds_Provider <- read_excel("Data/Beds_Provider.xlsx")
 provider_level_data <- read_csv("Data/provider_level_data.csv")
 Beds_regions <- read_csv("Data/Beds_regions.csv")
 # names(Beds_regions)[names(Beds_regions) == "Date"] <- "period"
@@ -64,8 +66,14 @@ provider_level_data <- filter(provider_level_data, standard != "31 Days Sub (Sur
 provider_level_data <- filter(provider_level_data, standard != "2WW Breast")
 
 
+### Change name of suspected breast cancer -> breast 
+### and suspected lung cancer -> lung 
+provider_level_data <- provider_level_data %>% 
+  mutate(cancer_type = recode(cancer_type, "Suspected lung cancer" = "Lung", "Suspected breast cancer" = "Breast"))
 
-
+### Caution!!!!! only when looking into breast and lung 
+provider_level_data <- provider_level_data %>% 
+  mutate(standard = replace(standard, standard == "2WW", "2WW for Suspected Cancer"))
 
 
 
@@ -107,29 +115,41 @@ ggplot(data = treated_by_cancer, aes(x = reorder(Cancer, x), y = x)) +
 
 
 ## plot for total cases against covid  
-ylim.prim <- c(min(plot_data$total_treated), max(plot_data$total_treated))
+
+plot_data1 <- provider_level_data %>% 
+  select(period, total_treated) %>% 
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+ylim.prim <- c(min(plot_data1$total_treated), max(plot_data1$total_treated))
 ylim.sec <- c(min(Beds_regions$England), max(Beds_regions$England))
 
 b <- diff(ylim.prim)/diff(ylim.sec)
 a <- ylim.prim[1] - b*ylim.sec[1]
 
-plot_data <- provider_level_data %>% 
-  select(period, total_treated) %>% 
-  group_by(period) %>%
-  summarise(total_treated = sum(total_treated), .groups = 'drop')
+plot_data2 <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, standard) %>% 
+  group_by(period, cancer_type) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(cancer_type == "Breast" | cancer_type == "Lung")
 
 ggplot() +
-  geom_line(data = plot_data, 
-            aes(x = period, y = total_treated), color = "hotpink") +
+  geom_line(data = plot_data1, 
+            aes(x = period, y = total_treated), color = "deepskyblue4", size=1) +
   ggtitle("Number of Treated Cancers and Number of beds occupied by covid patients in Hospital") + 
-  xlab("Years") + ylab("Number of Treated Cancer Cases")+
+  xlab("Time") + ylab("Number of Treated Cancer Cases")+
   geom_line(data = Beds_regions, 
-            aes(x = Date, y = a + England*b), color = "black")+ 
+            aes(x = Date, y = a + England*b), color = "black", size=1)+ 
   scale_y_continuous("\nNumber of Treated Cancer Cases", 
-                     sec.axis = sec_axis(~ (. - a)/b, name = "\nNumber of beds occupied by covid patients"))+
+                     sec.axis = sec_axis(~ (. - a)/b, name = "\nNumber of beds occupied by covid patients"),
+                     expand = c(0,0))+
   theme_bw() + 
-  theme(axis.title.y.left = element_text(colour = "hotpink"), 
-        axis.title.y.right = element_text(colour = "black")) 
+  theme(axis.title.y.left = element_text(colour = "deepskyblue4"), 
+        axis.title.y.right = element_text(colour = "black")) + 
+  annotate("rect", xmin = plot_data1$period[51], xmax = plot_data1$period[55],
+           ymin = 100000, ymax = 280000, alpha = .2) + 
+  annotate("rect", xmin = plot_data1$period[59], xmax = plot_data1$period[63],
+           ymin = 100000, ymax = 280000, alpha = .2)
 
 
 
@@ -175,10 +195,6 @@ ggplot(data = plot_data, aes(x = period, y = total_treated, group = cancer_type,
 #### It doesn't seem that other cancers have too much of an increasing trend
 
 
-### Change name of suspected breast cancer -> breast 
-### and suspected lung cancer -> lung 
-provider_level_data <- provider_level_data %>% 
-  mutate(cancer_type = recode(cancer_type, "Suspected lung cancer" = "Lung", "Suspected breast cancer" = "Breast"))
 
 ## Close up to Breast and Lung cancer 
 plot_data <- provider_level_data %>% 
@@ -211,10 +227,17 @@ plot_data <- provider_level_data %>%
   filter(cancer_type == "Lung")
 
 ggplot(data = plot_data, aes(x = period, y = total_treated, group = standard, color = standard)) +
-  geom_line() + ggtitle("Number of Treated Lung Cancer by standard") + 
-  xlab("Years") + ylab("Number of Treated Lung Cancer Cases") + 
-  theme_classic() + 
-  scale_color_brewer(palette = "Paired")
+  geom_line(size=1) + ggtitle("Number of Treated Lung Cancers by standard") + 
+  xlab("Time") + ylab("Number of Treated Lung Cancer Cases") + 
+  coord_cartesian(ylim = c(0, 40000)) +
+  theme_bw() + 
+  theme(legend.position="bottom") +
+  scale_color_manual(values=c("darkslategray3", "darkslategray4", "darkslategray")) + 
+  annotate("rect", xmin = plot_data$period[51], xmax = plot_data1$period[55],
+           ymin = 0, ymax = 40000, alpha = .2) + 
+  annotate("rect", xmin = plot_data$period[59], xmax = plot_data1$period[63],
+           ymin = 0, ymax = 40000, alpha = .2) +
+  scale_y_continuous(expand = c(0,0))
 
 
 plot_data <- provider_level_data %>% 
@@ -224,14 +247,59 @@ plot_data <- provider_level_data %>%
   filter(cancer_type == "Breast")
 
 ggplot(data = plot_data, aes(x = period, y = total_treated, group = standard, color = standard)) +
-  geom_line() + ggtitle("Number of Treated Breast Cancer by standard") + 
-  xlab("Years") + ylab("Number of Treated Breast Cancer Cases") + 
-  theme_classic()+ 
-  scale_color_brewer(palette = "Paired")
+  geom_line(size=1) + ggtitle("Number of Treated Breast Cancers by standard") + 
+  xlab("Time") + ylab("Number of Treated Breast Cancer Cases") + 
+  coord_cartesian(ylim = c(0, 45000)) +
+  theme_bw()+ 
+  theme(legend.position="bottom") +
+  scale_color_manual(values = c("indianred2", "indianred3", "indianred4")) + 
+  annotate("rect", xmin = plot_data$period[51], xmax = plot_data1$period[55],
+           ymin = 0, ymax = 46000, alpha = .2) + 
+  annotate("rect", xmin = plot_data$period[59], xmax = plot_data1$period[63],
+           ymin = 0, ymax = 46000, alpha = .2) +
+  scale_y_continuous(expand = c(0,0))
 
 
 
 
+### Breast and lung by performance 
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard, standard) %>% 
+  group_by(period, cancer_type, standard) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Breast") 
+
+ggplot(data = plot_data, aes(x = period, y = performance*100, group = standard, color = standard)) +
+  geom_line(size = 1) + ggtitle("Performance for Breast Cancer Waiting Times by standard") + 
+  xlab("Time") + ylab("Performance (%)") + 
+  theme_bw() + 
+  theme(legend.position="bottom") +
+  scale_color_manual(values=c("darkslategray3", "darkslategray4", "darkslategray"))+ 
+  annotate("rect", xmin = plot_data$period[51], xmax = plot_data1$period[55],
+           ymin = 50, ymax = 100, alpha = .2) + 
+  annotate("rect", xmin = plot_data$period[59], xmax = plot_data1$period[63],
+           ymin = 50, ymax = 100, alpha = .2) +
+  scale_y_continuous(expand = c(0,0))
+
+
+plot_data <- provider_level_data %>% 
+  select(period, cancer_type, total_treated, within_standard, standard) %>% 
+  group_by(period, cancer_type, standard) %>%
+  summarise(performance = mean(sum(within_standard)/sum(total_treated)), .groups = 'drop') %>%
+  filter(cancer_type == "Lung") 
+
+ggplot(data = plot_data, aes(x = period, y = performance*100, group = standard, color = standard)) +
+  geom_line(size = 1) + ggtitle("Performance for Lung Cancer Waiting Times by standard") + 
+  xlab("Time") + ylab("Performance (%)") + 
+  theme_bw()+ 
+  theme(legend.position="bottom") +
+  scale_color_manual(values = c("indianred2", "indianred3", "indianred4"))+ 
+  annotate("rect", xmin = plot_data1$period[51], xmax = plot_data1$period[55],
+           ymin = 50, ymax = 100, alpha = .2) + 
+  annotate("rect", xmin = plot_data1$period[59], xmax = plot_data1$period[63],
+           ymin = 50, ymax = 100, alpha = .2) +
+  scale_y_continuous(expand = c(0,0))
 
 
 
@@ -627,19 +695,65 @@ ggplot(data = Beds_regions, aes(x = period, y = England)) +
 #### VLINE NOT WORKING IDK WHY
 
 
+
+
+
 ## plot peak1 
 peak1_cancer <-
   provider_level_data %>% 
-  subset(period > "2020-03-01" & period < "2020-08-01")
+  subset(period == "2021-02-01")%>% 
+  filter(cancer_type == "Suspected lung cancer") 
+
 
 peak1_beds <- 
-  Beds_regions %>% 
-  subset(period > "2020-03-01" & period < "2020-08-01")
+  Beds_Provider %>% 
+  subset(period == "2021-02-01") %>%
+  select(provider_code, Beds_Occupied)
 
-peak1_data <- left_join(peak1_cancer, peak1_beds, by = c("period"))
+
+peak1_data <- left_join(peak1_cancer, peak1_beds, by = c("provider_code"))
 
 
-plot(peak1_data$England, peak1_data$performance)
+plot(peak1_data$Beds_Occupied, peak1_data$performance, main = "for Suspected lung cancer in 2021-02")
+
+
+
+## Plot for RRK Birmingham 
+peak_cancer <-
+  provider_level_data %>% 
+  subset(provider_code == "RRK")%>% 
+  filter(cancer_type == "Suspected breast cancer")
+
+
+peak_beds <- 
+  Beds_Provider %>% 
+  subset(provider_code == "RRK")%>%
+  select(period, Beds_Occupied)
+
+peak_data <- left_join(peak_cancer, peak_beds, by = c("period"))
+
+plot(peak_data$Beds_Occupied, peak_data$performance, main = "Scatter Plot of the Suspected Breast Cancer Performance against Beds Occupied for provider code = RRK")
+
+
+?plot
+
+peak_cancer <-
+  provider_level_data %>% 
+  subset(provider_code == "RYJ")%>% 
+  filter(cancer_type == "Suspected breast cancer")
+
+
+peak_beds <- 
+  Beds_Provider %>% 
+  subset(provider_code == "RYJ")%>%
+  select(period, Beds_Occupied)
+
+peak_data <- left_join(peak_cancer, peak_beds, by = c("period"))
+
+plot(peak_data$Beds_Occupied, peak_data$performance)
+
+
+
 
 
 
@@ -685,6 +799,252 @@ peak1_cancer_breast_London <-
 
 
 
+##############################################################################################
+##############################################################################################
+##############################################################################################
+
+### Try prophet on lung and breast total treated number 
+
+install.packages('prophet')
+
+library(prophet)
+library(tibble)
+library(caret)
+
+install.packages(c("cmdstanr", "posterior"), repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+cmdstanr::install_cmdstan()
+
+
+provider_lung_2WW <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(period < "2020-03-01")
+  
+
+lung_2WW <- mutate(provider_lung_2WW, ds = period, y = total_treated)
+lung_2WW_prophet <- prophet(provider_lung_2WW)
+lung_2WW_prophet_future <- make_future_dataframe(lung_2WW_prophet, periods = 21, freq='month')
+lung_2WW_prophet_forecast <- predict(lung_2WW_prophet, lung_2WW_prophet_future)
+plot(lung_2WW_prophet, lung_2WW_prophet_forecast) + theme_bw()
+
+
+
+
+
+provider_breast_2WW <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(period < "2020-03-01")
+
+provider_breast_2WW_real <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+provider_breast_2WW <- mutate(provider_breast_2WW, ds = period, y = total_treated)
+breast_2WW_prophet <- prophet(provider_breast_2WW)
+breast_2WW_prophet_future <- make_future_dataframe(breast_2WW_prophet, periods = 21, freq='month')
+breast_2WW_prophet_forecast <- predict(breast_2WW_prophet, breast_2WW_prophet_future)
+breast_2WW_prophet_forecast$real <- provider_breast_2WW_real$total_treated
+
+plot(breast_2WW_prophet, breast_2WW_prophet_forecast) + theme_bw() + 
+  labs(title = "Forecast of the Number of Treated 2WW Breast Cancer Cases in the Absence of the Pandemic",
+       subtitle = "Blue line is the predicted time series, while red is the real.",
+       x = "Time", 
+       y = "Number of Treated Cancer Cases") + 
+  geom_vline(xintercept = as.numeric(breast_2WW_prophet_forecast$ds[51]),
+             linetype = "dotted", size = 1) +
+  geom_line(aes(x = ds, y = real, colour = "indianred2"),size = 1, show.legend = FALSE) + 
+  annotate("rect", xmin = breast_2WW_prophet_forecast$ds[51], xmax = breast_2WW_prophet_forecast$ds[55],
+           ymin = 0, ymax = 50000, alpha = .2) + 
+  annotate("rect", xmin = breast_2WW_prophet_forecast$ds[59], xmax = breast_2WW_prophet_forecast$ds[63],
+           ymin = 0, ymax = 50000, alpha = .2) +
+  scale_y_continuous(expand = c(0,0))
+
+ 
+
+
+
+
+
+#################################################################################################
+#################################################################################################
+
+provider_breast_2WW <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(period < "2020-03-01")
+
+
+provider_breast_2WW <- mutate(provider_breast_2WW, ds = period, y = total_treated)
+breast_2WW_prophet <- prophet(provider_breast_2WW)
+breast_2WW_prophet_future <- make_future_dataframe(breast_2WW_prophet, periods = 21, freq='month')
+breast_2WW_prophet_forecast <- predict(breast_2WW_prophet, breast_2WW_prophet_future)
+breast_2WW_prophet_forecast$real <- provider_breast_2WW_real$total_treated
+
+
+provider_breast_2WW <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated, ) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+
+breast_2WW_expected <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>%
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, within_standard, standard) %>%
+  group_by(period, standard) %>%
+  summarise(within_standard = sum(within_standard), .groups = 'drop')
+
+breast_2WW_treated_exp <- breast_2WW_prophet_forecast %>% select(yhat)
+breast_2WW_expected <- cbind(breast_2WW_expected, breast_2WW_treated_exp)
+breast_2WW_expected$exp_performance <- breast_2WW_expected$within_standard/breast_2WW_expected$yhat
+  
+
+
+
+
+
+provider_breast_31 <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "31 Days") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(period < "2020-03-01")
+
+
+provider_breast_31 <- mutate(provider_breast_31, ds = period, y = total_treated)
+breast_31_prophet <- prophet(provider_breast_31)
+breast_31_prophet_future <- make_future_dataframe(breast_31_prophet, periods = 21, freq='month')
+breast_31_prophet_forecast <- predict(breast_31_prophet, breast_31_prophet_future)
+breast_31_prophet_forecast$real <- provider_breast_31_real$total_treated
+
+
+provider_breast_31 <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "31 Days") %>%
+  select(period, total_treated, ) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+
+breast_31_expected <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>%
+  filter(standard == "31 Days") %>%
+  select(period, within_standard, standard) %>%
+  group_by(period, standard) %>%
+  summarise(within_standard = sum(within_standard), .groups = 'drop')
+
+breast_31_treated_exp <- breast_31_prophet_forecast %>% select(yhat)
+breast_31_expected <- cbind(breast_31_expected, breast_31_treated_exp)
+breast_31_expected$exp_performance <- breast_31_expected$within_standard/breast_31_expected$yhat
+
+
+
+
+
+
+provider_breast_62 <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "62 Days") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(period < "2020-04-01")
+
+
+provider_breast_62 <- mutate(provider_breast_62, ds = period, y = total_treated)
+breast_62_prophet <- prophet(provider_breast_62)
+breast_62_prophet_future <- make_future_dataframe(breast_62_prophet, periods = 20, freq='month')
+breast_62_prophet_forecast <- predict(breast_62_prophet, breast_62_prophet_future)
+breast_62_prophet_forecast$real <- provider_breast_62_real$total_treated
+
+
+provider_breast_62 <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "62 Days") %>%
+  select(period, total_treated, ) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+
+breast_62_expected <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>%
+  filter(standard == "62 Days") %>%
+  select(period, within_standard, standard) %>%
+  group_by(period, standard) %>%
+  summarise(within_standard = sum(within_standard), .groups = 'drop')
+
+breast_62_treated_exp <- breast_62_prophet_forecast %>% select(yhat)
+breast_62_expected <- cbind(breast_62_expected, breast_62_treated_exp)
+breast_62_expected$exp_performance <- breast_62_expected$within_standard/breast_62_expected$yhat
+
+
+breast_expected <- rbind(breast_62_expected, breast_31_expected, breast_2WW_expected)
+
+
+
+
+
+ggplot(data = breast_expected, aes(x = period, y = exp_performance*100, group = standard, color = standard)) +
+  geom_line(size = 1) + ggtitle("Expected Performance for Breast Cancer Waiting Times by Standard") + 
+  xlab("Time") + ylab("Performance (%)") + 
+  theme_bw() + 
+  theme(legend.position="bottom") +
+  scale_color_manual(values=c("darkslategray3", "darkslategray4", "darkslategray"))+ 
+  annotate("rect", xmin = breast_expected$period[51], xmax = breast_expected$period[55],
+           ymin = 0, ymax = 119, alpha = .2) + 
+  annotate("rect", xmin = breast_expected$period[59], xmax = breast_expected$period[63],
+           ymin = 0, ymax = 119, alpha = .2) +
+  scale_y_continuous(expand = c(0,0))
+
+
+
+
+
+
+#################################################################################################
+#################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+lung_2WW_treated_exp <- lung_2WW_prophet_forecast %>% select(ds, yhat)
+colnames(lung_2WW_treated_exp)[1] <- "period"
+  
+  
+breast_2WW_treated_exp <- breast_2WW_prophet_forecast$yhat
+
+
+
+#
 
 
 
@@ -711,10 +1071,16 @@ peak1_cancer_breast_London <-
 
 
 
-# Plot total 
 
-
-
+##############################################################################################
+##############################################################################################
+##############################################################################################
+##############################################################################################
+#################################################################################################
+##############################################################################################
+##############################################################################################
+##############################################################################################
+###########################################################################################
 ##############################################################################################
 
 # Junk
