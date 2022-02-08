@@ -13,6 +13,7 @@ library(ggplot2)
 library(xts)
 library(reshape2)
 library(RColorBrewer)
+library(dplyr)
 
 ## Load Cancer waiting time data 
 library(readr)
@@ -877,6 +878,14 @@ plot(breast_2WW_prophet, breast_2WW_prophet_forecast) + theme_bw() +
 
 #################################################################################################
 #################################################################################################
+## Expected plot for breast 
+
+provider_breast_2WW_real <- provider_level_data %>% 
+  filter(cancer_type == "Breast") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
 
 provider_breast_2WW <- provider_level_data %>% 
   filter(cancer_type == "Breast") %>% 
@@ -916,8 +925,6 @@ breast_2WW_expected$exp_performance <- breast_2WW_expected$within_standard/breas
 
 
 
-
-
 provider_breast_31 <- provider_level_data %>% 
   filter(cancer_type == "Breast") %>% 
   filter(standard == "31 Days") %>%
@@ -952,9 +959,6 @@ breast_31_expected <- provider_level_data %>%
 breast_31_treated_exp <- breast_31_prophet_forecast %>% select(yhat)
 breast_31_expected <- cbind(breast_31_expected, breast_31_treated_exp)
 breast_31_expected$exp_performance <- breast_31_expected$within_standard/breast_31_expected$yhat
-
-
-
 
 
 
@@ -998,8 +1002,6 @@ breast_expected <- rbind(breast_62_expected, breast_31_expected, breast_2WW_expe
 
 
 
-
-
 ggplot(data = breast_expected, aes(x = period, y = exp_performance*100, group = standard, color = standard)) +
   geom_line(size = 1) + ggtitle("Expected Performance for Breast Cancer Waiting Times by Standard") + 
   xlab("Time") + ylab("Performance (%)") + 
@@ -1019,10 +1021,142 @@ ggplot(data = breast_expected, aes(x = period, y = exp_performance*100, group = 
 
 #################################################################################################
 #################################################################################################
+## Expected plot for lung
+
+
+provider_lung_2WW_real <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+provider_lung_2WW <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(period < "2020-03-01")
+
+
+provider_lung_2WW <- mutate(provider_lung_2WW, ds = period, y = total_treated)
+lung_2WW_prophet <- prophet(provider_lung_2WW)
+lung_2WW_prophet_future <- make_future_dataframe(lung_2WW_prophet, periods = 21, freq='month')
+lung_2WW_prophet_forecast <- predict(lung_2WW_prophet, lung_2WW_prophet_future)
+lung_2WW_prophet_forecast$real <- provider_lung_2WW_real$total_treated
+
+
+provider_lung_2WW <- provider_level_data %>% 
+  filter(cancer_type == "Lungt") %>% 
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, total_treated, ) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+
+lung_2WW_expected <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>%
+  filter(standard == "2WW for Suspected Cancer") %>%
+  select(period, within_standard, standard) %>%
+  group_by(period, standard) %>%
+  summarise(within_standard = sum(within_standard), .groups = 'drop')
+
+lung_2WW_treated_exp <- lung_2WW_prophet_forecast %>% select(yhat)
+lung_2WW_expected <- cbind(lung_2WW_expected, lung_2WW_treated_exp)
+lung_2WW_expected$exp_performance <- lung_2WW_expected$within_standard/lung_2WW_expected$yhat
 
 
 
 
+provider_lung_31 <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "31 Days") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(period < "2020-03-01")
+
+
+provider_lung_31 <- mutate(provider_lung_31, ds = period, y = total_treated)
+lung_31_prophet <- prophet(provider_lung_31)
+lung_31_prophet_future <- make_future_dataframe(lung_31_prophet, periods = 21, freq='month')
+lung_31_prophet_forecast <- predict(lung_31_prophet, lung_31_prophet_future)
+lung_31_prophet_forecast$real <- provider_lung_31_real$total_treated
+
+
+provider_lung_31 <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "31 Days") %>%
+  select(period, total_treated, ) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+
+lung_31_expected <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>%
+  filter(standard == "31 Days") %>%
+  select(period, within_standard, standard) %>%
+  group_by(period, standard) %>%
+  summarise(within_standard = sum(within_standard), .groups = 'drop')
+
+lung_31_treated_exp <- lung_31_prophet_forecast %>% select(yhat)
+lung_31_expected <- cbind(lung_31_expected, lung_31_treated_exp)
+lung_31_expected$exp_performance <- lung_31_expected$within_standard/lung_31_expected$yhat
+
+
+
+provider_lung_62 <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "62 Days") %>%
+  select(period, total_treated) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
+  filter(period < "2020-04-01")
+
+
+provider_lung_62 <- mutate(provider_lung_62, ds = period, y = total_treated)
+lung_62_prophet <- prophet(provider_lung_62)
+lung_62_prophet_future <- make_future_dataframe(lung_62_prophet, periods = 20, freq='month')
+lung_62_prophet_forecast <- predict(lung_62_prophet, lung_62_prophet_future)
+lung_62_prophet_forecast$real <- provider_lung_62_real$total_treated
+
+
+provider_lung_62 <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>% 
+  filter(standard == "62 Days") %>%
+  select(period, total_treated, ) %>%
+  group_by(period) %>%
+  summarise(total_treated = sum(total_treated), .groups = 'drop')
+
+
+lung_62_expected <- provider_level_data %>% 
+  filter(cancer_type == "Lung") %>%
+  filter(standard == "62 Days") %>%
+  select(period, within_standard, standard) %>%
+  group_by(period, standard) %>%
+  summarise(within_standard = sum(within_standard), .groups = 'drop')
+
+lung_62_treated_exp <- lung_62_prophet_forecast %>% select(yhat)
+lung_62_expected <- cbind(lung_62_expected, lung_62_treated_exp)
+lung_62_expected$exp_performance <- lung_62_expected$within_standard/lung_62_expected$yhat
+
+
+lung_expected <- rbind(lung_62_expected, lung_31_expected, lung_2WW_expected)
+
+
+
+ggplot(data = lung_expected, aes(x = period, y = exp_performance*100, group = standard, color = standard)) +
+  geom_line(size = 1) + ggtitle("Expected Performance for Lung Cancer Waiting Times by Standard") + 
+  xlab("Time") + ylab("Performance (%)") + 
+  theme_bw() + 
+  theme(legend.position="bottom") +
+  scale_color_manual(values=c("indianred2", "indianred3", "indianred4"))+ 
+  annotate("rect", xmin = lung_expected$period[51], xmax = lung_expected$period[55],
+           ymin = 0, ymax = 119, alpha = .2) + 
+  annotate("rect", xmin = lung_expected$period[59], xmax = lung_expected$period[63],
+           ymin = 0, ymax = 119, alpha = .2) +
+  scale_y_continuous(expand = c(0,0))
 
 
 
@@ -1035,16 +1169,11 @@ ggplot(data = breast_expected, aes(x = period, y = exp_performance*100, group = 
 
   
 
-  
-lung_2WW_treated_exp <- lung_2WW_prophet_forecast %>% select(ds, yhat)
-colnames(lung_2WW_treated_exp)[1] <- "period"
-  
-  
-breast_2WW_treated_exp <- breast_2WW_prophet_forecast$yhat
 
 
 
-#
+#################################################################################################
+#################################################################################################
 
 
 
