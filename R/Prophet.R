@@ -1,4 +1,4 @@
-#setwd("C:/Users/1015k/Desktop/LSHTM/Data Challenge/R")
+setwd("C:/Users/1015k/Desktop/LSHTM/Data Challenge/R")
 
 install.packages('prophet')
 
@@ -9,6 +9,9 @@ library(caret)
 library(ggplot2)
 library(scales)
 library(RColorBrewer)
+library(gridExtra)
+
+packageVersion("prophet")
 
 # R
 
@@ -75,7 +78,7 @@ str(df)
 
 #################################################
 
-#Create df for average performance prediction (contains provider level data)
+#Create df for average performance prediction in each region (contains provider level data)
 #IMPORTANT: The final df before using prophet should contain only 2 columns: 'y' and 'ds'
 #Create df across UK
 df_UK <- subset(df, select = c(ds, y))
@@ -97,7 +100,12 @@ df_sou <- subset(df_sou, select = c(ds, y))
 
 #Prophet for average perfomance across UK
 m_UK <- prophet(df_UK)
+
+#################################################
+#COVID period df use for every prophet model
+
 future <- make_future_dataframe(m_UK, periods = 24, freq='month')
+#################################################
 
 forecast_UK <- predict(m_UK, future)
 tail(forecast_UK[c('ds', 'yhat', 'yhat_lower', 'yhat_upper')])
@@ -167,7 +175,8 @@ yhat_plot <- ggplot(forecast_yhat, aes(x = ds)) +
        x="Time", y = "Performance") +
   geom_vline(xintercept = as.numeric(forecast_yhat$ds[51]),
              linetype = "dotted") +
-  scale_color_manual(values = col_yhat)
+  scale_color_manual(values = col_yhat) +
+  theme_bw()
 
 yhat_plot
 
@@ -211,7 +220,8 @@ region_per <- ggplot(real_per_reg, aes(x = ds)) +
        x="Time", y = "Performance") +
   geom_vline(xintercept = as.numeric(real_per$ds[201]),
              linetype = "dotted") +
-  scale_color_manual(values = col_yhat)
+  scale_color_manual(values = col_yhat) +
+  theme_bw()
 
 region_per
 
@@ -323,7 +333,8 @@ yhat_plot_new <- ggplot(forecast_yhat_new, aes(x = ds)) +
        x="Time", y = "Performance") +
   geom_vline(xintercept = as.numeric(forecast_yhat_new$ds[51]),
              linetype = "dotted") +
-  scale_color_manual(values = col_yhat)
+  scale_color_manual(values = col_yhat) +
+  theme_bw()
 
 yhat_plot_new
 
@@ -369,7 +380,8 @@ region_per_sum <- ggplot(real_per_reg_sum, aes(x = ds)) +
        x="Time", y = "Performance") +
   geom_vline(xintercept = as.numeric(real_per_sum$ds[201]),
              linetype = "dotted") +
-  scale_color_manual(values = col_yhat)
+  scale_color_manual(values = col_yhat) +
+  theme_bw()
 
 region_per_sum
 
@@ -474,7 +486,8 @@ yhat_plot_tr <- ggplot(forecast_yhat_tr, aes(x = ds)) +
   scale_y_continuous(trans = log10_trans(),
                        breaks = trans_breaks("log10", function(x) 10^x),
                        labels = trans_format("log10", math_format(10^.x))) +
-  scale_color_manual(values = col_yhat)
+  scale_color_manual(values = col_yhat) +
+  theme_bw()
 
 yhat_plot_tr
 
@@ -518,7 +531,7 @@ region_tr <- ggplot(df_tr_r_com, aes(x = ds)) +
   geom_line(aes(y = y_mid, colour="Midlands & East"), lwd=0.75) +
   geom_line(aes(y = y_nor, colour="North"), lwd=0.75) +
   geom_line(aes(y = y_sou, colour="South"), lwd=0.75) +
-  labs(title="Total Treated Patients pre COVID Prediction in each UK Region",
+  labs(title="Total Treated Patients in each UK Region",
        subtitle = "with the cutpoint at 1st lock down in Mar 2020 & across All Cancer Types", 
        x="Time", y = "Total Treated") +
   geom_vline(xintercept = as.numeric(df_tr_r_com$ds[51]),
@@ -526,7 +539,8 @@ region_tr <- ggplot(df_tr_r_com, aes(x = ds)) +
   scale_y_continuous(trans = log10_trans(),
                      breaks = trans_breaks("log10", function(x) 10^x),
                      labels = trans_format("log10", math_format(10^.x))) +
-  scale_color_manual(values = col_yhat)
+  scale_color_manual(values = col_yhat) +
+  theme_bw()
 
 region_tr
 
@@ -604,3 +618,130 @@ yhat_plot_ca_b <- ggplot(forecast_yhat_ca_b, aes(x = ds)) +
   scale_color_manual(values = col_ca_b)
 
 yhat_plot_ca_b
+
+###########################################
+
+##Create df for total performance prediction in each standard
+
+grouped_period_st <- df1 %>%
+  group_by(ds, standard) %>%
+  summarise(sum_treated = sum(total_treated))
+
+grouped_period_st1 <- df1 %>%
+  group_by(ds, standard) %>%
+  summarise(y = sum(within_standard))
+
+df_st <- cbind(grouped_period_st, grouped_period_st1[3])
+df_st[4] <- (df_st[4])/(df_st[3])*100
+
+df_st_pre <- filter(df_st, ds < "2020-3-1")
+
+df_st2 <- subset(df_st_pre, select = c(ds, standard, y))
+
+#Create df in each standard
+df_2ww <- subset(df_st2, standard == "2WW")
+df_2ww <- subset(df_2ww, select = c(ds, y))
+
+df_31d <- subset(df_st2, standard == "31 Days")
+df_31d <- subset(df_31d, select = c(ds, y))
+
+df_62d <- subset(df_st2, standard == "62 Days")
+df_62d <- subset(df_62d, select = c(ds, y))
+
+#Prophet in each standard
+m_2ww <- prophet(df_2ww)
+forecast_2ww <- predict(m_2ww, future)
+
+m_31d <- prophet(df_31d)
+forecast_31d <- predict(m_31d, future)
+
+m_62d <- prophet(df_62d)
+forecast_62d <- predict(m_62d, future)
+#############
+# Visualization for prediction with summation of performance
+# Prophet Component Visualization in each UK region
+
+plot(m_2ww, forecast_2ww)
+prophet_plot_components(m_2ww, forecast_2ww)
+
+plot(m_31d, forecast_31d)
+prophet_plot_components(m_31d, forecast_31d)
+
+plot(m_62d, forecast_62d)
+prophet_plot_components(m_62d, forecast_62d)
+
+# Create summarize visualization for prediction
+# Create new dataset for ggplot2
+
+col_yhat_st <- c("2WW" = "#FF6666", 
+              "31 Days" = "#2B8CBE", 
+              "62 Days" = "#00CC66")
+
+yhat_31d <- subset(forecast_31d, select = c(yhat))
+yhat_62d <- subset(forecast_62d, select = c(yhat))
+
+forecast_yhat_st <- as.data.frame(subset(forecast_2ww, select = c(ds, yhat)))
+forecast_yhat_st <- cbind(forecast_yhat_st, yhat_31d, yhat_62d)
+
+names(forecast_yhat_st)[3] <- 'yhat_31d'
+names(forecast_yhat_st)[4] <- 'yhat_62d'
+
+# Coding with ggplot2
+
+yhat_plot_st <- ggplot(forecast_yhat_st, aes(x = ds)) +
+  geom_line(aes(y = yhat, colour="2WW"), lwd=0.75) +
+  geom_line(aes(y = yhat_31d, colour="31 Days"), lwd=0.75) +
+  geom_line(aes(y = yhat_62d, colour="62 Days"), lwd=0.75) +
+  labs(title="Pre-COVID Prediction CWT Using Summation Performance in Each Standard",
+       subtitle = "cutpoint at 1st lock down in Mar 2020", 
+       x="Time", y = "Performance") +
+  geom_vline(xintercept = as.numeric(forecast_yhat_st$ds[51]),
+             linetype = "dotted") +
+  geom_hline(yintercept = 93, linetype = "dashed", colour="#FF6666", lwd=0.75) +
+  geom_hline(yintercept = 96, linetype = "dashed", colour="#2B8CBE", lwd=0.75) +
+  geom_hline(yintercept = 85, linetype = "dashed", colour="#00CC66", lwd=0.75) +
+  scale_color_manual(values = col_yhat_st) +
+  theme_bw()
+
+yhat_plot_st
+
+# Create visualization to compare with real performance summation data
+# Create new dataset for ggplot2
+
+real_st <- df_st %>%
+  group_by(ds, standard) %>%
+  summarise_at(vars(y), list(y = mean))
+
+real_2ww <- filter(real_st, standard == "2WW")
+real_2ww <- subset(real_2ww, select = c(ds, y))
+
+real_31d <- filter(real_st, standard == "31 Days")
+real_31d <- subset(real_31d, select = c(y))
+
+real_62d <- filter(real_st, standard == "62 Days")
+real_62d <- subset(real_62d, select = c(y))
+
+real_per_st <- cbind(real_2ww, real_31d, real_62d)
+
+names(real_per_st)[2] <- 'y_2ww'
+names(real_per_st)[3] <- 'y_31d'
+names(real_per_st)[4] <- 'y_62d'
+
+st_per_sum <- ggplot(real_per_st, aes(x = ds)) +
+  geom_line(aes(y = y_2ww, colour="2WW"), lwd=0.75) +
+  geom_line(aes(y = y_31d, colour="31 Days"), lwd=0.75) +
+  geom_line(aes(y = y_62d, colour="62 Days"), lwd=0.75) +
+  labs(title="CWT Summation Performance in Each Standard",
+       subtitle = "cutpoint at 1st lock down in Mar 2020", 
+       x="Time", y = "Performance") +
+  geom_vline(xintercept = as.numeric(real_per_st$ds[51]),
+             linetype = "dotted") +
+  geom_hline(yintercept = 93, linetype = "dashed", colour="#FF6666", lwd=0.75) +
+  geom_hline(yintercept = 96, linetype = "dashed", colour="#2B8CBE", lwd=0.75) +
+  geom_hline(yintercept = 85, linetype = "dashed", colour="#00CC66", lwd=0.75) +
+  scale_color_manual(values = col_yhat_st) +
+  theme_bw()
+
+st_per_sum
+
+Sum_st <- grid.arrange(yhat_plot_st, st_per_sum)
