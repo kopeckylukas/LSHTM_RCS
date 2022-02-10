@@ -990,7 +990,7 @@ breast_expected <- rbind(breast_62_expected, breast_31_expected, breast_2WW_expe
 
 
 ggplot(data = breast_expected, aes(x = period, y = exp_performance*100, group = standard, color = standard)) +
-  geom_line(size = 1) + ggtitle("Expected Performance for Breast Cancer Waiting Times by Standard") + 
+  geom_line(size = 1) + ggtitle("Estimated Performance for Breast Cancer Waiting Times by Standard") + 
   xlab("Time") + ylab("Performance (%)") + 
   theme_bw() + 
   theme(legend.position="bottom") +
@@ -1134,7 +1134,7 @@ lung_expected <- rbind(lung_62_expected, lung_31_expected, lung_2WW_expected)
 
 
 ggplot(data = lung_expected, aes(x = period, y = exp_performance*100, group = standard, color = standard)) +
-  geom_line(size = 1) + ggtitle("Expected Performance for Lung Cancer Waiting Times by Standard") + 
+  geom_line(size = 1) + ggtitle("Estimated Performance for Lung Cancer Waiting Times by Standard") + 
   xlab("Time") + ylab("Performance (%)") + 
   theme_bw() + 
   theme(legend.position="bottom") +
