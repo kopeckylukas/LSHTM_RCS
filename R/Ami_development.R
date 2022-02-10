@@ -149,7 +149,7 @@ ggplot() +
         axis.title.y.right = element_text(colour = "black")) + 
   annotate("rect", xmin = plot_data1$period[51], xmax = plot_data1$period[55],
            ymin = 100000, ymax = 280000, alpha = .2) + 
-  annotate("rect", xmin = plot_data1$period[59], xmax = plot_data1$period[63],
+  annotate("rect", xmin = plot_data1$period[57], xmax = plot_data1$period[64],
            ymin = 100000, ymax = 280000, alpha = .2)
 
 
@@ -234,9 +234,9 @@ ggplot(data = plot_data, aes(x = period, y = total_treated, group = standard, co
   theme_bw() + 
   theme(legend.position="bottom") +
   scale_color_manual(values=c("darkslategray3", "darkslategray4", "darkslategray")) + 
-  annotate("rect", xmin = plot_data$period[51], xmax = plot_data1$period[55],
+  annotate("rect", xmin = plot_data1$period[51], xmax = plot_data1$period[55],
            ymin = 0, ymax = 40000, alpha = .2) + 
-  annotate("rect", xmin = plot_data$period[59], xmax = plot_data1$period[63],
+  annotate("rect", xmin = plot_data1$period[57], xmax = plot_data1$period[64],
            ymin = 0, ymax = 40000, alpha = .2) +
   scale_y_continuous(expand = c(0,0))
 
@@ -254,9 +254,9 @@ ggplot(data = plot_data, aes(x = period, y = total_treated, group = standard, co
   theme_bw()+ 
   theme(legend.position="bottom") +
   scale_color_manual(values = c("indianred2", "indianred3", "indianred4")) + 
-  annotate("rect", xmin = plot_data$period[51], xmax = plot_data1$period[55],
+  annotate("rect", xmin = plot_data1$period[51], xmax = plot_data1$period[55],
            ymin = 0, ymax = 46000, alpha = .2) + 
-  annotate("rect", xmin = plot_data$period[59], xmax = plot_data1$period[63],
+  annotate("rect", xmin = plot_data1$period[57], xmax = plot_data1$period[64],
            ymin = 0, ymax = 46000, alpha = .2) +
   scale_y_continuous(expand = c(0,0))
 
@@ -276,10 +276,10 @@ ggplot(data = plot_data, aes(x = period, y = performance*100, group = standard, 
   xlab("Time") + ylab("Performance (%)") + 
   theme_bw() + 
   theme(legend.position="bottom") +
-  scale_color_manual(values=c("darkslategray3", "darkslategray4", "darkslategray"))+ 
-  annotate("rect", xmin = plot_data$period[51], xmax = plot_data1$period[55],
+  scale_color_manual(values=c("indianred2", "indianred3", "indianred4"))+ 
+  annotate("rect", xmin = plot_data1$period[51], xmax = plot_data1$period[55],
            ymin = 50, ymax = 100, alpha = .2) + 
-  annotate("rect", xmin = plot_data$period[59], xmax = plot_data1$period[63],
+  annotate("rect", xmin = plot_data1$period[57], xmax = plot_data1$period[64],
            ymin = 50, ymax = 100, alpha = .2) +
   scale_y_continuous(expand = c(0,0))
 
@@ -295,10 +295,10 @@ ggplot(data = plot_data, aes(x = period, y = performance*100, group = standard, 
   xlab("Time") + ylab("Performance (%)") + 
   theme_bw()+ 
   theme(legend.position="bottom") +
-  scale_color_manual(values = c("indianred2", "indianred3", "indianred4"))+ 
+  scale_color_manual(values = c("darkslategray3", "darkslategray4", "darkslategray"))+ 
   annotate("rect", xmin = plot_data1$period[51], xmax = plot_data1$period[55],
            ymin = 50, ymax = 100, alpha = .2) + 
-  annotate("rect", xmin = plot_data1$period[59], xmax = plot_data1$period[63],
+  annotate("rect", xmin = plot_data1$period[57], xmax = plot_data1$period[64],
            ymin = 50, ymax = 100, alpha = .2) +
   scale_y_continuous(expand = c(0,0))
 
@@ -816,22 +816,6 @@ install.packages(c("cmdstanr", "posterior"), repos = c("https://mc-stan.org/r-pa
 cmdstanr::install_cmdstan()
 
 
-provider_lung_2WW <- provider_level_data %>% 
-  filter(cancer_type == "Lung") %>% 
-  filter(standard == "2WW for Suspected Cancer") %>%
-  select(period, total_treated) %>%
-  group_by(period) %>%
-  summarise(total_treated = sum(total_treated), .groups = 'drop') %>%
-  filter(period < "2020-03-01")
-  
-
-lung_2WW <- mutate(provider_lung_2WW, ds = period, y = total_treated)
-lung_2WW_prophet <- prophet(provider_lung_2WW)
-lung_2WW_prophet_future <- make_future_dataframe(lung_2WW_prophet, periods = 21, freq='month')
-lung_2WW_prophet_forecast <- predict(lung_2WW_prophet, lung_2WW_prophet_future)
-plot(lung_2WW_prophet, lung_2WW_prophet_forecast) + theme_bw()
-
-
 
 
 
@@ -857,8 +841,8 @@ breast_2WW_prophet_forecast <- predict(breast_2WW_prophet, breast_2WW_prophet_fu
 breast_2WW_prophet_forecast$real <- provider_breast_2WW_real$total_treated
 
 plot(breast_2WW_prophet, breast_2WW_prophet_forecast) + theme_bw() + 
-  labs(title = "Forecast of the Number of Treated 2WW Breast Cancer Cases in the Absence of the Pandemic",
-       subtitle = "Blue line is the predicted time series, while red is the real.",
+  labs(title = "Modelling of the Number of Treated 2WW Breast Cancer Cases in the Absence of the Pandemic",
+       subtitle = "The blue line is the modelled time series and the red line is the observed time series.",
        x = "Time", 
        y = "Number of Treated Cancer Cases") + 
   geom_vline(xintercept = as.numeric(breast_2WW_prophet_forecast$ds[51]),
@@ -866,13 +850,16 @@ plot(breast_2WW_prophet, breast_2WW_prophet_forecast) + theme_bw() +
   geom_line(aes(x = ds, y = real, colour = "indianred2"),size = 1, show.legend = FALSE) + 
   annotate("rect", xmin = breast_2WW_prophet_forecast$ds[51], xmax = breast_2WW_prophet_forecast$ds[55],
            ymin = 0, ymax = 50000, alpha = .2) + 
-  annotate("rect", xmin = breast_2WW_prophet_forecast$ds[59], xmax = breast_2WW_prophet_forecast$ds[63],
+  annotate("rect", xmin = breast_2WW_prophet_forecast$ds[57], xmax = breast_2WW_prophet_forecast$ds[64],
            ymin = 0, ymax = 50000, alpha = .2) +
   scale_y_continuous(expand = c(0,0))
 
  
-
-
+sum = 0
+for (i in 51:55){
+  count <- breast_2WW_prophet_forecast$yhat[i] - breast_2WW_prophet_forecast$real[i]
+  sum = sum + count
+}
 
 
 
@@ -1007,10 +994,10 @@ ggplot(data = breast_expected, aes(x = period, y = exp_performance*100, group = 
   xlab("Time") + ylab("Performance (%)") + 
   theme_bw() + 
   theme(legend.position="bottom") +
-  scale_color_manual(values=c("darkslategray3", "darkslategray4", "darkslategray"))+ 
+  scale_color_manual(values=c("indianred2", "indianred3", "indianred4"))+ 
   annotate("rect", xmin = breast_expected$period[51], xmax = breast_expected$period[55],
            ymin = 0, ymax = 119, alpha = .2) + 
-  annotate("rect", xmin = breast_expected$period[59], xmax = breast_expected$period[63],
+  annotate("rect", xmin = breast_expected$period[57], xmax = breast_expected$period[64],
            ymin = 0, ymax = 119, alpha = .2) +
   scale_y_continuous(expand = c(0,0))
 
@@ -1151,10 +1138,10 @@ ggplot(data = lung_expected, aes(x = period, y = exp_performance*100, group = st
   xlab("Time") + ylab("Performance (%)") + 
   theme_bw() + 
   theme(legend.position="bottom") +
-  scale_color_manual(values=c("indianred2", "indianred3", "indianred4"))+ 
+  scale_color_manual(values=c("darkslategray3", "darkslategray4", "darkslategray"))+ 
   annotate("rect", xmin = lung_expected$period[51], xmax = lung_expected$period[55],
            ymin = 0, ymax = 119, alpha = .2) + 
-  annotate("rect", xmin = lung_expected$period[59], xmax = lung_expected$period[63],
+  annotate("rect", xmin = lung_expected$period[57], xmax = lung_expected$period[64],
            ymin = 0, ymax = 119, alpha = .2) +
   scale_y_continuous(expand = c(0,0))
 
