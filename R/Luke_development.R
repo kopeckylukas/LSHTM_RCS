@@ -179,3 +179,15 @@ unique(data3[c("provider_code")])
   
   data %>% summarise(max(period))
   
+  
+  
+  prov <- read_csv("Data/provider_level_data.csv")
+
+  post <- read_csv("Data/postcode_list.csv")  
+  post <- post[,1:2]
+
+  newprov <- merge(prov,post,by="provider_code", all.x = TRUE)
+  
+  write_csv(post,"data/postcodes.csv",na="")
+  
+  
